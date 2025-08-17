@@ -1,10 +1,33 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
+import { useUser } from '../../context/UserContext';
 
 export default function ProfileScreen() {
   const theme = useTheme();
+  const { user, logout } = useUser();
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar sesión',
+      '¿Estás seguro de que quieres cerrar sesión?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { 
+          text: 'Cerrar sesión', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await logout();
+            } catch (error) {
+              Alert.alert('Error', 'No se pudo cerrar sesión. Intenta de nuevo.');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const ProfileCard = ({ title, value, icon }: { title: string; value: string; icon: string }) => (
     <View style={styles.profileCard}>
@@ -35,7 +58,7 @@ export default function ProfileScreen() {
           <View style={[styles.avatarContainer, { backgroundColor: theme.colors.card }]}>
             <Text style={styles.avatarText}>👤</Text>
           </View>
-          <Text style={[styles.userName, { color: theme.colors.text }]}>Atleta Fitness</Text>
+          <Text style={[styles.userName, { color: theme.colors.text }]}>{user?.name || 'Usuario'}</Text>
           <Text style={[styles.userLevel, { color: theme.colors.accent }]}>Nivel Avanzado</Text>
         </View>
 
@@ -107,7 +130,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Logout Button */}
-        <TouchableOpacity style={styles.logoutButton}>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.logoutText}>Cerrar sesión</Text>
         </TouchableOpacity>
       </ScrollView>
