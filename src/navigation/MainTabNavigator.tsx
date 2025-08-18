@@ -8,6 +8,7 @@ import HomeScreen from '../screens/HomeScreen/HomeScreen';
 import AIRoutineScreen from '../screens/AIRoutineScreen/AIRoutineScreen';
 import CommunityScreen from '../screens/CommunityScreen/CommunityScreen';
 import ProfileScreen from '../screens/ProfileScreen/ProfileScreen';
+import ObjectivesScreen from '../screens/GoalsScreen/ObjectivesScreen';
 
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get('window');
@@ -60,6 +61,7 @@ const AnimatedTabIcon = ({ focused, route, theme }: { focused: boolean; route: a
       case 'AI Routine': return 'flash';
       case 'Community': return 'people';
       case 'Profile': return 'person';
+      case 'Objectives': return 'flag';
       default: return 'home';
     }
   };
@@ -163,6 +165,11 @@ export default function MainTabNavigator() {
           name="Home" 
           component={HomeScreen}
           options={{ tabBarLabel: 'Inicio' }}
+        />
+        <Tab.Screen 
+          name="Objectives" 
+          component={ObjectivesScreen}
+          options={{ tabBarLabel: 'Objetivos' }}
         />
         <Tab.Screen 
           name="AI Routine" 

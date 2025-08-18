@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
 import { getDb } from './firebase';
 
 export type ObjectiveDoc = {
@@ -24,9 +24,19 @@ export async function saveObjectives(userId: string, muscleGroups: string[]): Pr
 
 export async function getObjectives(userId: string): Promise<ObjectiveDoc | null> {
 	const db = getDb();
-	const snap = await getDoc(doc(db, 'objectives', userId));
-	if (!snap.exists()) return null;
-	return snap.data() as ObjectiveDoc;
+	// 1) Intentar por documento con ID = uid
+	const byIdSnap = await getDoc(doc(db, 'objectives', userId));
+	if (byIdSnap.exists()) return byIdSnap.data() as ObjectiveDoc;
+
+	// 2) Si no existe, buscar por campo userId (por si fue creado con auto-ID)
+	const q = query(
+		collection(db, 'objectives'),
+		where('userId', '==', userId),
+		limit(1),
+	);
+	const list = await getDocs(q);
+	if (list.empty) return null;
+	return list.docs[0].data() as ObjectiveDoc;
 }
 
 

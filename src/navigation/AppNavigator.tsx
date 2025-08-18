@@ -32,7 +32,7 @@ export default function AppNavigator() {
         user?.hasCompletedSurvey ? (
           <Stack.Screen name="MainTabs" component={MainTabNavigator} />
         ) : (
-          <Stack.Screen name="InitialSurvey" component={InitialSurveyScreen} />
+          <Stack.Screen name="InitialSurvey" component={InitialSurveyScreen} options={{ gestureEnabled: false }} />
         )
       ) : (
         <>

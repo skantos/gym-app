@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, BackHandler } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
 import { getDb } from '../../services/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import ObjectiveSelector from './ObjectiveSelector';
-import { saveObjectives } from '../../services/objectives';
+import { saveObjectives, getObjectives } from '../../services/objectives';
 
 type SurveyData = {
   goal: string;
@@ -44,6 +45,7 @@ export default function InitialSurveyScreen({ navigation }: any) {
   const { user, markSurveyCompleted } = useUser();
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
   const [surveyData, setSurveyData] = useState<SurveyData>({
     goal: '',
     targetDays: 30,
@@ -231,6 +233,36 @@ export default function InitialSurveyScreen({ navigation }: any) {
     }
   }, [user?.hasCompletedSurvey]);
 
+  // Precargar objetivos guardados del usuario (si existen)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!user?.id) return;
+      try {
+        const doc = await getObjectives(user.id);
+        if (mounted && doc?.muscleGroups?.length) {
+          setSelectedMuscles(doc.muscleGroups);
+        }
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, [user?.id]);
+
+  // Manejo del botón físico atrás en Android: retrocede pasos o bloquea si es el primero
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (currentStep > 0) {
+          setCurrentStep((s) => Math.max(0, s - 1));
+          return true; // consumimos el evento
+        }
+        return true; // bloqueamos para que no intente salir del stack (no hay ruta previa)
+      };
+      const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => sub.remove();
+    }, [currentStep])
+  );
+
   const canProceed = () => {
     const step = steps[currentStep];
     if (step.title.includes('músculos') && selectedMuscles.length === 0) return false;
@@ -249,19 +281,25 @@ export default function InitialSurveyScreen({ navigation }: any) {
   };
 
   const handleFinish = async () => {
+    let stage: 'save_objectives' | 'save_survey' | 'update_user' | 'navigate' | 'idle' = 'idle';
     try {
+      setSaving(true);
       if (!user?.id) return;
       
       const db = getDb();
       // Guardar objetivos en colección aparte
+      stage = 'save_objectives';
       await saveObjectives(user.id, selectedMuscles);
+      // Guardar respuestas del survey
+      stage = 'save_survey';
       await setDoc(doc(db, 'initial_survey', user.id), {
         ...surveyData,
         userId: user.id,
         completedAt: serverTimestamp(),
-      });
+      }, { merge: true });
 
       // Marcar que el usuario ya completó el survey
+      stage = 'update_user';
       await setDoc(doc(db, 'users', user.id), {
         hasCompletedSurvey: true,
         surveyCompletedAt: serverTimestamp(),
@@ -269,13 +307,20 @@ export default function InitialSurveyScreen({ navigation }: any) {
 
       // Actualizar estado local y navegar a Home
       markSurveyCompleted && markSurveyCompleted();
+      stage = 'navigate';
       Alert.alert(
         '¡Perfecto!',
         'Tu perfil ha sido configurado. Ahora podemos crear rutinas personalizadas para ti.',
         [{ text: 'Continuar', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] }) }]
       );
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo guardar tu información. Intenta de nuevo.');
+    } catch (error: any) {
+      // eslint-disable-next-line no-console
+      console.error('[InitialSurvey] Error guardando encuesta', { stage, error });
+      const code = error?.code ? ` (${String(error.code)})` : '';
+      const msg = error?.message ? `\nDetalle: ${String(error.message)}` : '';
+      Alert.alert('Error', `No se pudo guardar tu información en la etapa: ${stage}${code}.${msg}`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -334,13 +379,13 @@ export default function InitialSurveyScreen({ navigation }: any) {
             styles.navButton, 
             styles.nextButton, 
             { backgroundColor: theme.colors.accent },
-            !canProceed() && { opacity: 0.5 }
+            (!canProceed() || saving) && { opacity: 0.5 }
           ]}
           onPress={handleNext}
-          disabled={!canProceed()}
+          disabled={!canProceed() || saving}
         >
           <Text style={[styles.navButtonText, { color: '#000' }]}>
-            {currentStep === steps.length - 1 ? 'Finalizar' : 'Siguiente'}
+            {saving ? 'Guardando...' : currentStep === steps.length - 1 ? 'Finalizar' : 'Siguiente'}
           </Text>
           {currentStep < steps.length - 1 && (
             <Ionicons name="arrow-forward" size={20} color="#000" />

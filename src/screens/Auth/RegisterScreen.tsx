@@ -17,7 +17,10 @@ export default function RegisterScreen() {
     try {
       setLoading(true);
       await registerWithEmail(name.trim(), email.trim(), password);
-      navigation.goBack();
+      // Tras registrarse, el stack cambia a autenticado. Solo volvemos si existe una ruta previa.
+      if (navigation && typeof (navigation as any).canGoBack === 'function' && (navigation as any).canGoBack()) {
+        navigation.goBack();
+      }
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'No se pudo crear la cuenta');
     } finally {
