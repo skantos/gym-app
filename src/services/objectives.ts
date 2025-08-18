@@ -1,5 +1,4 @@
-import { collection, doc, getDoc, getDocs, limit, query, serverTimestamp, setDoc, where } from 'firebase/firestore';
-import { getDb } from './firebase';
+import { supabase } from './supabase';
 
 export type ObjectiveDoc = {
 	userId: string;
@@ -9,34 +8,21 @@ export type ObjectiveDoc = {
 };
 
 export async function saveObjectives(userId: string, muscleGroups: string[]): Promise<void> {
-	const db = getDb();
-	await setDoc(
-		doc(db, 'objectives', userId),
-		{
-			userId,
-			muscleGroups,
-			updatedAt: serverTimestamp(),
-			createdAt: serverTimestamp(),
-		} as ObjectiveDoc,
-		{ merge: true },
-	);
+	const { error } = await supabase
+		.from('objectives')
+		.upsert({ user_id: userId, muscle_groups: muscleGroups, updated_at: new Date().toISOString() });
+	if (error) throw error;
 }
 
 export async function getObjectives(userId: string): Promise<ObjectiveDoc | null> {
-	const db = getDb();
-	// 1) Intentar por documento con ID = uid
-	const byIdSnap = await getDoc(doc(db, 'objectives', userId));
-	if (byIdSnap.exists()) return byIdSnap.data() as ObjectiveDoc;
-
-	// 2) Si no existe, buscar por campo userId (por si fue creado con auto-ID)
-	const q = query(
-		collection(db, 'objectives'),
-		where('userId', '==', userId),
-		limit(1),
-	);
-	const list = await getDocs(q);
-	if (list.empty) return null;
-	return list.docs[0].data() as ObjectiveDoc;
+	const { data, error } = await supabase
+		.from('objectives')
+		.select('muscle_groups')
+		.eq('user_id', userId)
+		.single();
+	if (error && (error as any).code !== 'PGRST116') throw error; // 116 = no rows
+	if (!data) return null;
+	return { userId, muscleGroups: data.muscle_groups ?? [] };
 }
 
 

@@ -3,8 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert,
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
-import { getDb } from '../../services/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { supabase } from '../../services/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import ObjectiveSelector from './ObjectiveSelector';
 import { saveObjectives, getObjectives } from '../../services/objectives';
@@ -286,24 +285,29 @@ export default function InitialSurveyScreen({ navigation }: any) {
       setSaving(true);
       if (!user?.id) return;
       
-      const db = getDb();
       // Guardar objetivos en colección aparte
       stage = 'save_objectives';
       await saveObjectives(user.id, selectedMuscles);
       // Guardar respuestas del survey
       stage = 'save_survey';
-      await setDoc(doc(db, 'initial_survey', user.id), {
-        ...surveyData,
-        userId: user.id,
-        completedAt: serverTimestamp(),
-      }, { merge: true });
+      await supabase.from('initial_survey').upsert({
+        user_id: user.id,
+        goal: surveyData.goal,
+        target_days: surveyData.targetDays,
+        body_type: surveyData.bodyType,
+        hours_per_week: surveyData.hoursPerWeek,
+        has_gym: surveyData.hasGym,
+        experience: surveyData.experience,
+        motivation: surveyData.motivation,
+        completed_at: new Date().toISOString(),
+      });
 
       // Marcar que el usuario ya completó el survey
       stage = 'update_user';
-      await setDoc(doc(db, 'users', user.id), {
-        hasCompletedSurvey: true,
-        surveyCompletedAt: serverTimestamp(),
-      }, { merge: true });
+      await supabase.from('profiles').update({
+        has_completed_survey: true,
+        survey_completed_at: new Date().toISOString(),
+      }).eq('id', user.id);
 
       // Actualizar estado local y navegar a Home
       markSurveyCompleted && markSurveyCompleted();

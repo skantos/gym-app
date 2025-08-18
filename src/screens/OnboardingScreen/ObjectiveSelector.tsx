@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import Body from 'react-native-body-highlighter';
+import { useUser } from '../../context/UserContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -32,6 +33,7 @@ const ALLOWED_SLUGS = Object.keys(MUSCLE_LABELS);
 
 export default function ObjectiveSelector({ selected, onChange }: ObjectiveSelectorProps) {
 	const theme = useTheme();
+	const { user } = useUser();
 	const [side, setSide] = useState<'front' | 'back'>('front');
 
 	const data = useMemo(() => selected.map((slug) => ({ slug, intensity: 2 })), [selected]);
@@ -62,7 +64,7 @@ export default function ObjectiveSelector({ selected, onChange }: ObjectiveSelec
 			<View style={styles.bodyWrapper}>
 				<Body
 					data={data}
-					gender="male"
+					gender={(user?.gender === 'female' ? 'female' : 'male') as 'male' | 'female'}
 					side={side}
 					scale={1.25}
 					border={theme.colors.card}

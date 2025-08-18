@@ -26,15 +26,8 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "firebase": {
-        "apiKey": "AIzaSyAr7K4EmZS1ceZvXoRGtg6mdrY7UclNzqA",
-        "authDomain": "gym-app-f6cfe.firebaseapp.com",
-        "projectId": "gym-app-f6cfe",
-        "storageBucket": "gym-app-f6cfe.appspot.com",
-        "messagingSenderId": "408902633228",
-        "appId": "1:408902633228:web:41a7ed83fe2c9ecbf1eb29",
-        "measurementId": "G-E5DV1MXSLX"
-      }
+      "supabaseUrl": "https://geuurkuqztyomglfgzsb.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdldXVya3VxenR5b21nbGZnenNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NTM2OTMsImV4cCI6MjA3MTEyOTY5M30.DDuzrXqMXUOfGsfLmnOnTmbQu9-DEUA2WHzHdRheLS8"
     }
   }
 }

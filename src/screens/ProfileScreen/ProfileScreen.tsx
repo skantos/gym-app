@@ -59,7 +59,12 @@ export default function ProfileScreen() {
             <Text style={styles.avatarText}>👤</Text>
           </View>
           <Text style={[styles.userName, { color: theme.colors.text }]}>{user?.name || 'Usuario'}</Text>
-          <Text style={[styles.userLevel, { color: theme.colors.accent }]}>Nivel Avanzado</Text>
+          <Text style={[styles.userLevel, { color: theme.colors.accent }]}>{user?.email}</Text>
+          {user?.gender && (
+            <View style={[styles.pill, { borderColor: theme.colors.card }]}> 
+              <Text style={[styles.pillText, { color: theme.colors.text }]}>Género: {user.gender === 'female' ? 'Mujer' : 'Hombre'}</Text>
+            </View>
+          )}
         </View>
 
         {/* Stats Grid */}
@@ -173,21 +178,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     opacity: 0.8,
+    marginBottom: 6,
+  },
+  pill: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 6,
+  },
+  pillText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   statsContainer: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
     marginBottom: 40,
     gap: 12,
   },
   profileCard: {
-    flex: 1,
+    width: '48%',
     alignItems: 'center',
     padding: 20,
     backgroundColor: '#1A1A1A',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#333',
+    minWidth: 150,
+    marginBottom: 12,
   },
   cardIcon: {
     fontSize: 24,

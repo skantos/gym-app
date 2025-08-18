@@ -49,7 +49,7 @@ export default function ObjectivesScreen() {
 			<View style={styles.bodyWrapper}>
 				<Body
 					data={data}
-					gender="male"
+					gender={(user?.gender === 'female' ? 'female' : 'male') as 'male' | 'female'}
 					side={side}
 					scale={1.3}
 					border={theme.colors.card}
