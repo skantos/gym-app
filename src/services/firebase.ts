@@ -2,6 +2,8 @@ import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 
 type FirebaseConfig = {
 	apiKey: string;
@@ -38,7 +40,24 @@ export function getFirebaseApp(): FirebaseApp {
 
 export function getFirebaseAuth(): Auth {
 	if (!auth) {
-		auth = getAuth(getFirebaseApp());
+		const app = getFirebaseApp();
+		if (Platform.OS === 'web') {
+			// En web la persistencia ya es local por defecto
+			auth = getAuth(app);
+		} else {
+			// En nativo debemos proveer AsyncStorage para persistir la sesión
+			try {
+				// Cargar APIs específicas de RN de manera dinámica para evitar problemas de tipos
+				// eslint-disable-next-line @typescript-eslint/no-var-requires
+				const rnAuth = require('firebase/auth');
+				auth = rnAuth.initializeAuth(app, {
+					persistence: rnAuth.getReactNativePersistence(ReactNativeAsyncStorage),
+				});
+			} catch (_e) {
+				// Si Auth ya fue inicializado, usamos la instancia existente
+				auth = getAuth(app);
+			}
+		}
 	}
 	return auth as Auth;
 }

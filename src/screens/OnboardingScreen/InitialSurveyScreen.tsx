@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
 import { getDb } from '../../services/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
+import ObjectiveSelector from './ObjectiveSelector';
+import { saveObjectives } from '../../services/objectives';
 
 type SurveyData = {
   goal: string;
@@ -41,6 +43,7 @@ export default function InitialSurveyScreen({ navigation }: any) {
   const theme = useTheme();
   const { user, markSurveyCompleted } = useUser();
   const [currentStep, setCurrentStep] = useState(0);
+  const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
   const [surveyData, setSurveyData] = useState<SurveyData>({
     goal: '',
     targetDays: 30,
@@ -52,6 +55,16 @@ export default function InitialSurveyScreen({ navigation }: any) {
   });
 
   const steps = [
+    {
+      title: 'Elige tus músculos objetivo',
+      subtitle: 'Toca en el cuerpo o elige de la lista',
+      component: (
+        <ObjectiveSelector
+          selected={selectedMuscles}
+          onChange={setSelectedMuscles}
+        />
+      )
+    },
     {
       title: '¿Cuál es tu meta principal?',
       subtitle: 'Elige lo que más te motiva',
@@ -211,8 +224,16 @@ export default function InitialSurveyScreen({ navigation }: any) {
     }
   ];
 
+  // Si el usuario ya completó la encuesta, saltar directamente al Home
+  useEffect(() => {
+    if (user?.hasCompletedSurvey) {
+      navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] });
+    }
+  }, [user?.hasCompletedSurvey]);
+
   const canProceed = () => {
     const step = steps[currentStep];
+    if (step.title.includes('músculos') && selectedMuscles.length === 0) return false;
     if (step.title.includes('meta principal') && !surveyData.goal) return false;
     if (step.title.includes('tipo de cuerpo') && !surveyData.bodyType) return false;
     if (step.title.includes('experiencia') && !surveyData.experience) return false;
@@ -232,6 +253,8 @@ export default function InitialSurveyScreen({ navigation }: any) {
       if (!user?.id) return;
       
       const db = getDb();
+      // Guardar objetivos en colección aparte
+      await saveObjectives(user.id, selectedMuscles);
       await setDoc(doc(db, 'initial_survey', user.id), {
         ...surveyData,
         userId: user.id,
@@ -244,17 +267,12 @@ export default function InitialSurveyScreen({ navigation }: any) {
         surveyCompletedAt: serverTimestamp(),
       }, { merge: true });
 
-      // Actualizar estado local para que AppNavigator redirija
-      try { require('../../context/UserContext'); } catch {}
-      // Usar el hook para marcar completado
-      // Nota: ya tenemos useUser arriba
-      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+      // Actualizar estado local y navegar a Home
       markSurveyCompleted && markSurveyCompleted();
-
       Alert.alert(
         '¡Perfecto!',
         'Tu perfil ha sido configurado. Ahora podemos crear rutinas personalizadas para ti.',
-        [{ text: 'Continuar', onPress: () => {/* AppNavigator decidirá destino */} }]
+        [{ text: 'Continuar', onPress: () => navigation.reset({ index: 0, routes: [{ name: 'MainTabs' }] }) }]
       );
     } catch (error) {
       Alert.alert('Error', 'No se pudo guardar tu información. Intenta de nuevo.');
