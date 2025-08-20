@@ -28,6 +28,9 @@
     "extra": {
       "supabaseUrl": "https://geuurkuqztyomglfgzsb.supabase.co",
       "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdldXVya3VxenR5b21nbGZnenNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NTM2OTMsImV4cCI6MjA3MTEyOTY5M30.DDuzrXqMXUOfGsfLmnOnTmbQu9-DEUA2WHzHdRheLS8"
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ]
   }
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
@@ -7,6 +8,7 @@ import { useUser } from '../../context/UserContext';
 export default function ProfileScreen() {
   const theme = useTheme();
   const { user, logout } = useUser();
+  const insets = useSafeAreaInsets();
 
   const handleLogout = () => {
     Alert.alert(
@@ -52,7 +54,11 @@ export default function ProfileScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollView}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}
+        contentContainerStyle={{ paddingBottom: (40 + 75 + 40) + insets.bottom }}
+      >
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <View style={[styles.avatarContainer, { backgroundColor: theme.colors.card }]}>
