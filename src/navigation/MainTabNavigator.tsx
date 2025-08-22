@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -9,16 +10,27 @@ import AIRoutineScreen from '../screens/AIRoutineScreen/AIRoutineScreen';
 import CommunityScreen from '../screens/CommunityScreen/CommunityScreen';
 import ProfileScreen from '../screens/ProfileScreen/ProfileScreen';
 import ObjectivesScreen from '../screens/GoalsScreen/ObjectivesScreen';
+import CreateRoutineScreen from '../screens/CreateRoutineScreen';
+import MyRoutinesScreen from '../screens/MyRoutinesScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 const { width } = Dimensions.get('window');
 
-const AnimatedTabIcon = ({ focused, route, theme }: { focused: boolean; route: any; theme: any }) => {
-  const scaleValue = React.useRef(new Animated.Value(1)).current;
-  const rotateValue = React.useRef(new Animated.Value(0)).current;
-  const glowValue = React.useRef(new Animated.Value(0)).current;
+const AnimatedTabIcon = ({
+  focused,
+  route,
+  theme,
+}: {
+  focused: boolean;
+  route: any;
+  theme: any;
+}) => {
+  const scaleValue = useRef(new Animated.Value(1)).current;
+  const rotateValue = useRef(new Animated.Value(0)).current;
+  const glowValue = useRef(new Animated.Value(0)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (focused) {
       Animated.parallel([
         Animated.spring(scaleValue, {
@@ -57,12 +69,18 @@ const AnimatedTabIcon = ({ focused, route, theme }: { focused: boolean; route: a
 
   const getIconName = () => {
     switch (route.name) {
-      case 'Home': return 'home';
-      case 'AI Routine': return 'flash';
-      case 'Community': return 'people';
-      case 'Profile': return 'person';
-      case 'Objectives': return 'flag';
-      default: return 'home';
+      case 'Home':
+        return 'home';
+      case 'AI Routine':
+        return 'flash';
+      case 'Community':
+        return 'people';
+      case 'Profile':
+        return 'person';
+      case 'Objectives':
+        return 'flag';
+      default:
+        return 'home';
     }
   };
 
@@ -83,7 +101,7 @@ const AnimatedTabIcon = ({ focused, route, theme }: { focused: boolean; route: a
           ]}
         />
       )}
-      
+
       <Animated.View
         style={[
           styles.iconContainer,
@@ -110,7 +128,7 @@ const AnimatedTabIcon = ({ focused, route, theme }: { focused: boolean; route: a
   );
 };
 
-export default function MainTabNavigator() {
+function TabNavigator() {
   const theme = useTheme();
 
   return (
@@ -123,7 +141,7 @@ export default function MainTabNavigator() {
           style={styles.gradientLine}
         />
       </View>
-      
+
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
@@ -143,10 +161,12 @@ export default function MainTabNavigator() {
             paddingTop: 15,
           },
           tabBarBackground: () => (
-            <View style={[
-              styles.tabBarBackground,
-              { backgroundColor: theme.colors.card + '40' } 
-            ]} />
+            <View
+              style={[
+                styles.tabBarBackground,
+                { backgroundColor: theme.colors.card + '40' },
+              ]}
+            />
           ),
           tabBarActiveTintColor: theme.colors.accent,
           tabBarInactiveTintColor: theme.colors.text,
@@ -161,33 +181,57 @@ export default function MainTabNavigator() {
           ),
         })}
       >
-        <Tab.Screen 
-          name="Home" 
+        <Tab.Screen
+          name="Home"
           component={HomeScreen}
           options={{ tabBarLabel: 'Inicio' }}
         />
-        <Tab.Screen 
-          name="Objectives" 
+        <Tab.Screen
+          name="Objectives"
           component={ObjectivesScreen}
           options={{ tabBarLabel: 'Objetivos' }}
         />
-        <Tab.Screen 
-          name="AI Routine" 
+        <Tab.Screen
+          name="AI Routine"
           component={AIRoutineScreen}
           options={{ tabBarLabel: 'IA Rutina' }}
         />
-        <Tab.Screen 
-          name="Community" 
+        <Tab.Screen
+          name="Community"
           component={CommunityScreen}
           options={{ tabBarLabel: 'Comunidad' }}
         />
-        <Tab.Screen 
-          name="Profile" 
+        <Tab.Screen
+          name="Profile"
           component={ProfileScreen}
           options={{ tabBarLabel: 'Perfil' }}
         />
       </Tab.Navigator>
     </>
+  );
+}
+
+export default function MainTabNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="MainTabs" component={TabNavigator} />
+      <Stack.Screen
+        name="CreateRoutine"
+        component={CreateRoutineScreen}
+        options={{
+          presentation: 'modal',
+          gestureEnabled: true,
+        }}
+      />
+      <Stack.Screen
+        name="MyRoutines"
+        component={MyRoutinesScreen}
+        options={{
+          presentation: 'card',
+          gestureEnabled: true,
+        }}
+      />
+    </Stack.Navigator>
   );
 }
 

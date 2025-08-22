@@ -1,14 +1,23 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
+import { useNavigation } from '@react-navigation/native';
 
 export default function ProfileScreen() {
   const theme = useTheme();
   const { user, logout } = useUser();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation();
 
   const handleLogout = () => {
     Alert.alert(
@@ -16,59 +25,101 @@ export default function ProfileScreen() {
       '¿Estás seguro de que quieres cerrar sesión?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Cerrar sesión', 
+        {
+          text: 'Cerrar sesión',
           style: 'destructive',
           onPress: async () => {
             try {
               await logout();
             } catch (error) {
-              Alert.alert('Error', 'No se pudo cerrar sesión. Intenta de nuevo.');
+              Alert.alert(
+                'Error',
+                'No se pudo cerrar sesión. Intenta de nuevo.'
+              );
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
 
-  const ProfileCard = ({ title, value, icon }: { title: string; value: string; icon: string }) => (
+  const ProfileCard = ({
+    title,
+    value,
+    icon,
+  }: {
+    title: string;
+    value: string;
+    icon: string;
+  }) => (
     <View style={styles.profileCard}>
       <Text style={styles.cardIcon}>{icon}</Text>
-      <Text style={[styles.cardTitle, { color: theme.colors.text }]}>{title}</Text>
-      <Text style={[styles.cardValue, { color: theme.colors.accent }]}>{value}</Text>
+      <Text style={[styles.cardTitle, { color: theme.colors.text }]}>
+        {title}
+      </Text>
+      <Text style={[styles.cardValue, { color: theme.colors.accent }]}>
+        {value}
+      </Text>
     </View>
   );
 
-  const MenuItem = ({ title, subtitle, icon, onPress }: { title: string; subtitle: string; icon: string; onPress: () => void }) => (
+  const MenuItem = ({
+    title,
+    subtitle,
+    icon,
+    onPress,
+  }: {
+    title: string;
+    subtitle: string;
+    icon: string;
+    onPress: () => void;
+  }) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
       <View style={styles.menuIcon}>
         <Text style={styles.menuIconText}>{icon}</Text>
       </View>
       <View style={styles.menuContent}>
-        <Text style={[styles.menuTitle, { color: theme.colors.text }]}>{title}</Text>
-        <Text style={[styles.menuSubtitle, { color: theme.colors.text }]}>{subtitle}</Text>
+        <Text style={[styles.menuTitle, { color: theme.colors.text }]}>
+          {title}
+        </Text>
+        <Text style={[styles.menuSubtitle, { color: theme.colors.text }]}>
+          {subtitle}
+        </Text>
       </View>
       <Text style={[styles.menuArrow, { color: theme.colors.text }]}>›</Text>
     </TouchableOpacity>
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+    >
       <ScrollView
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: (40 + 75 + 40) + insets.bottom }}
+        contentContainerStyle={{ paddingBottom: 40 + 75 + 40 + insets.bottom }}
       >
         {/* Profile Header */}
         <View style={styles.profileHeader}>
-          <View style={[styles.avatarContainer, { backgroundColor: theme.colors.card }]}>
+          <View
+            style={[
+              styles.avatarContainer,
+              { backgroundColor: theme.colors.card },
+            ]}
+          >
             <Text style={styles.avatarText}>👤</Text>
           </View>
-          <Text style={[styles.userName, { color: theme.colors.text }]}>{user?.name || 'Usuario'}</Text>
-          <Text style={[styles.userLevel, { color: theme.colors.accent }]}>{user?.email}</Text>
+          <Text style={[styles.userName, { color: theme.colors.text }]}>
+            {user?.name || 'Usuario'}
+          </Text>
+          <Text style={[styles.userLevel, { color: theme.colors.accent }]}>
+            {user?.email}
+          </Text>
           {user?.gender && (
-            <View style={[styles.pill, { borderColor: theme.colors.card }]}> 
-              <Text style={[styles.pillText, { color: theme.colors.text }]}>Género: {user.gender === 'female' ? 'Mujer' : 'Hombre'}</Text>
+            <View style={[styles.pill, { borderColor: theme.colors.card }]}>
+              <Text style={[styles.pillText, { color: theme.colors.text }]}>
+                Género: {user.gender === 'female' ? 'Mujer' : 'Hombre'}
+              </Text>
             </View>
           )}
         </View>
@@ -85,22 +136,40 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
             Acciones rápidas
           </Text>
-          
-          <TouchableOpacity style={styles.actionCard}>
+
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('CreateRoutine' as never)}
+          >
             <LinearGradient
-              colors={[theme.colors.accent + '20', theme.colors.secondaryAccent + '20']}
+              colors={[
+                theme.colors.accent + '20',
+                theme.colors.secondaryAccent + '20',
+              ]}
               style={styles.actionGradient}
             >
               <View style={styles.actionContent}>
                 <View style={styles.actionInfo}>
-                  <Text style={[styles.actionTitle, { color: theme.colors.text }]}>
+                  <Text
+                    style={[styles.actionTitle, { color: theme.colors.text }]}
+                  >
                     Crear rutina personalizada
                   </Text>
-                  <Text style={[styles.actionSubtitle, { color: theme.colors.text }]}>
+                  <Text
+                    style={[
+                      styles.actionSubtitle,
+                      { color: theme.colors.text },
+                    ]}
+                  >
                     Diseña tu entrenamiento ideal
                   </Text>
                 </View>
-                <View style={[styles.actionButton, { backgroundColor: theme.colors.accent }]}>
+                <View
+                  style={[
+                    styles.actionButton,
+                    { backgroundColor: theme.colors.accent },
+                  ]}
+                >
                   <Text style={styles.actionButtonText}>+</Text>
                 </View>
               </View>
@@ -113,30 +182,36 @@ export default function ProfileScreen() {
           <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>
             Configuración
           </Text>
-          
-          <MenuItem 
-            title="Metas personales" 
-            subtitle="Configura tus objetivos de fitness" 
-            icon="🎯" 
-            onPress={() => {}} 
+
+          <MenuItem
+            title="Mis Rutinas"
+            subtitle="Gestiona tus rutinas personalizadas"
+            icon="🏋️"
+            onPress={() => navigation.navigate('MyRoutines' as never)}
           />
-          <MenuItem 
-            title="Historial completo" 
-            subtitle="Revisa todos tus entrenamientos" 
-            icon="📊" 
-            onPress={() => {}} 
+          <MenuItem
+            title="Metas personales"
+            subtitle="Configura tus objetivos de fitness"
+            icon="🎯"
+            onPress={() => {}}
           />
-          <MenuItem 
-            title="Preferencias" 
-            subtitle="Personaliza tu experiencia" 
-            icon="⚙️" 
-            onPress={() => {}} 
+          <MenuItem
+            title="Historial completo"
+            subtitle="Revisa todos tus entrenamientos"
+            icon="📊"
+            onPress={() => {}}
           />
-          <MenuItem 
-            title="Ayuda y soporte" 
-            subtitle="Obtén ayuda cuando la necesites" 
-            icon="❓" 
-            onPress={() => {}} 
+          <MenuItem
+            title="Preferencias"
+            subtitle="Personaliza tu experiencia"
+            icon="⚙️"
+            onPress={() => {}}
+          />
+          <MenuItem
+            title="Ayuda y soporte"
+            subtitle="Obtén ayuda cuando la necesites"
+            icon="❓"
+            onPress={() => {}}
           />
         </View>
 
