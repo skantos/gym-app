@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, BackHandler } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
@@ -10,12 +10,18 @@ import { saveObjectives, getObjectives } from '../../services/objectives';
 
 type SurveyData = {
   goal: string;
-  targetDays: number;
-  bodyType: string;
-  hoursPerWeek: number;
-  hasGym: boolean;
-  experience: string;
-  motivation: string;
+  daysPerWeek: number | null;
+  sessionDurationMinutes: number | null;
+  equipmentAccess: 'full_gym' | 'home_dumbbells_bands' | 'bodyweight' | '';
+  experience: 'beginner' | 'intermediate' | 'advanced' | '';
+  hasInjury: boolean | null;
+  injuries: string[];
+  mobilityRestriction: '' | 'knees' | 'hips' | 'shoulders' | 'spine' | 'none';
+  trainingPreference: 'gym_classic' | 'circuits_hiit' | 'bodyweight' | 'mixed' | '';
+  aestheticGoal: 'athletic' | 'slim' | 'muscular' | 'defined' | 'curvy' | '';
+  sleepHoursRange: '' | 'lt6' | '6_7' | '7_8' | 'gt8';
+  weightKg: number | null;
+  heightCm: number | null;
 };
 
 const GOALS = [
@@ -26,17 +32,65 @@ const GOALS = [
   { id: 'endurance', label: 'Mejorar resistencia', icon: 'timer' },
 ];
 
-const BODY_TYPES = [
+const AESTHETIC_GOALS = [
   { id: 'athletic', label: 'Atlético', icon: 'body' },
   { id: 'slim', label: 'Delgado', icon: 'person' },
   { id: 'muscular', label: 'Musculoso', icon: 'fitness' },
+  { id: 'defined', label: 'Definido', icon: 'flash' },
   { id: 'curvy', label: 'Curvilíneo', icon: 'body' },
 ];
 
 const EXPERIENCE_LEVELS = [
-  { id: 'beginner', label: 'Principiante', description: 'Nunca he entrenado' },
-  { id: 'intermediate', label: 'Intermedio', description: 'Algo de experiencia' },
-  { id: 'advanced', label: 'Avanzado', description: 'Entreno regularmente' },
+  { id: 'beginner', label: 'Principiante', description: 'Nunca entrené o < 6 meses' },
+  { id: 'intermediate', label: 'Intermedio', description: '6 meses – 2 años' },
+  { id: 'advanced', label: 'Avanzado', description: '> 2 años' },
+];
+
+const DAYS_PER_WEEK_OPTIONS = [2, 3, 4, 5, 6];
+const SESSION_DURATION_OPTIONS = [
+  { id: 30, label: '30 min' },
+  { id: 45, label: '45 min' },
+  { id: 60, label: '1 hora' },
+  { id: 90, label: '1h 30m' },
+  { id: 120, label: '2h o más' },
+];
+
+const EQUIPMENT_OPTIONS = [
+  { id: 'full_gym', label: 'Sí, gimnasio completo', icon: 'fitness' },
+  { id: 'home_dumbbells_bands', label: 'Casa: mancuernas / bandas', icon: 'home' },
+  { id: 'bodyweight', label: 'Solo peso corporal', icon: 'body' },
+] as const;
+
+const INJURY_OPTIONS = [
+  { id: 'knee', label: 'Problemas de rodilla' },
+  { id: 'back', label: 'Problemas de espalda' },
+  { id: 'shoulder', label: 'Problemas de hombro' },
+  { id: 'asthma', label: 'Asma' },
+  { id: 'hypertension', label: 'Hipertensión' },
+  { id: 'diabetes', label: 'Diabetes' },
+  { id: 'other', label: 'Otra condición' },
+];
+
+const MOBILITY_RESTRICTIONS = [
+  { id: 'none', label: 'No' },
+  { id: 'knees', label: 'Sí, en rodillas' },
+  { id: 'hips', label: 'Sí, en cadera' },
+  { id: 'shoulders', label: 'Sí, en hombros' },
+  { id: 'spine', label: 'Sí, en columna' },
+];
+
+const TRAINING_STYLES = [
+  { id: 'gym_classic', label: 'Rutinas clásicas de gimnasio' },
+  { id: 'circuits_hiit', label: 'Circuitos / HIIT' },
+  { id: 'bodyweight', label: 'Peso corporal / Calistenia' },
+  { id: 'mixed', label: 'Mixto' },
+];
+
+const SLEEP_OPTIONS = [
+  { id: 'lt6', label: 'Menos de 6h' },
+  { id: '6_7', label: '6-7h' },
+  { id: '7_8', label: '7-8h' },
+  { id: 'gt8', label: 'Más de 8h' },
 ];
 
 export default function InitialSurveyScreen({ navigation }: any) {
@@ -47,16 +101,33 @@ export default function InitialSurveyScreen({ navigation }: any) {
   const [saving, setSaving] = useState(false);
   const [surveyData, setSurveyData] = useState<SurveyData>({
     goal: '',
-    targetDays: 30,
-    bodyType: '',
-    hoursPerWeek: 3,
-    hasGym: true,
+    daysPerWeek: null,
+    sessionDurationMinutes: null,
+    equipmentAccess: '',
     experience: '',
-    motivation: '',
+    hasInjury: null,
+    injuries: [],
+    mobilityRestriction: '',
+    trainingPreference: '',
+    aestheticGoal: '',
+    sleepHoursRange: '',
+    weightKg: null,
+    heightCm: null,
   });
 
-  const steps = [
-    {
+  type Step = {
+    key: string;
+    title: string;
+    subtitle: string;
+    component: React.ReactNode;
+    isValid: () => boolean;
+  };
+
+  const steps: Step[] = useMemo(() => {
+    const list: Step[] = [];
+
+    list.push({
+      key: 'muscles',
       title: 'Elige tus músculos objetivo',
       subtitle: 'Toca en el cuerpo o elige de la lista',
       component: (
@@ -64,9 +135,12 @@ export default function InitialSurveyScreen({ navigation }: any) {
           selected={selectedMuscles}
           onChange={setSelectedMuscles}
         />
-      )
-    },
-    {
+      ),
+      isValid: () => selectedMuscles.length > 0,
+    });
+
+    list.push({
+      key: 'goal',
       title: '¿Cuál es tu meta principal?',
       subtitle: 'Elige lo que más te motiva',
       component: (
@@ -86,101 +160,130 @@ export default function InitialSurveyScreen({ navigation }: any) {
             </TouchableOpacity>
           ))}
         </View>
-      )
-    },
-    {
-      title: '¿En cuántos días quieres lograr tu meta?',
-      subtitle: 'Sé realista con tu tiempo',
-      component: (
-        <View style={styles.inputContainer}>
-          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Días objetivo</Text>
-          <TextInput
-            style={[styles.numberInput, { color: theme.colors.text, borderColor: theme.colors.card }]}
-            value={surveyData.targetDays.toString()}
-            onChangeText={(text) => setSurveyData({ ...surveyData, targetDays: parseInt(text) || 30 })}
-            keyboardType="numeric"
-            placeholder="30"
-            placeholderTextColor="#aaa"
-          />
-          <Text style={[styles.inputHint, { color: theme.colors.text }]}>
-            Recomendamos entre 30-90 días para resultados sostenibles
-          </Text>
-        </View>
-      )
-    },
-    {
-      title: '¿Qué tipo de cuerpo quieres lograr?',
-      subtitle: 'Elige tu objetivo físico',
+      ),
+      isValid: () => !!surveyData.goal,
+    });
+
+    list.push({
+      key: 'days_per_week',
+      title: 'Disponibilidad semanal',
+      subtitle: '¿Cuántos días puedes entrenar por semana?',
       component: (
         <View style={styles.optionsContainer}>
-          {BODY_TYPES.map((type) => (
+          {DAYS_PER_WEEK_OPTIONS.map((d) => (
             <TouchableOpacity
-              key={type.id}
+              key={d}
               style={[
                 styles.optionCard,
                 { backgroundColor: theme.colors.card },
-                surveyData.bodyType === type.id && { borderColor: theme.colors.accent, borderWidth: 2 }
+                surveyData.daysPerWeek === d && { borderColor: theme.colors.accent, borderWidth: 2 }
               ]}
-              onPress={() => setSurveyData({ ...surveyData, bodyType: type.id })}
+              onPress={() => setSurveyData({ ...surveyData, daysPerWeek: d })}
             >
-              <Ionicons name={type.icon as any} size={24} color={theme.colors.accent} />
-              <Text style={[styles.optionText, { color: theme.colors.text }]}>{type.label}</Text>
+              <Ionicons name="calendar" size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{d} días</Text>
             </TouchableOpacity>
           ))}
         </View>
-      )
-    },
-    {
-      title: '¿Cuántas horas por semana puedes dedicar?',
-      subtitle: 'Sé honesto con tu disponibilidad',
+      ),
+      isValid: () => typeof surveyData.daysPerWeek === 'number',
+    });
+
+    list.push({
+      key: 'session_duration',
+      title: 'Disponibilidad semanal',
+      subtitle: '¿Cuánto tiempo por sesión?',
       component: (
-        <View style={styles.inputContainer}>
-          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Horas por semana</Text>
-          <TextInput
-            style={[styles.numberInput, { color: theme.colors.text, borderColor: theme.colors.card }]}
-            value={surveyData.hoursPerWeek.toString()}
-            onChangeText={(text) => setSurveyData({ ...surveyData, hoursPerWeek: parseInt(text) || 3 })}
-            keyboardType="numeric"
-            placeholder="3"
-            placeholderTextColor="#aaa"
-          />
-          <Text style={[styles.inputHint, { color: theme.colors.text }]}>
-            Incluye tiempo de entrenamiento y preparación
-          </Text>
+        <View style={styles.optionsContainer}>
+          {SESSION_DURATION_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[
+                styles.optionCard,
+                { backgroundColor: theme.colors.card },
+                surveyData.sessionDurationMinutes === opt.id && { borderColor: theme.colors.accent, borderWidth: 2 }
+              ]}
+              onPress={() => setSurveyData({ ...surveyData, sessionDurationMinutes: opt.id })}
+            >
+              <Ionicons name="time" size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      )
-    },
-    {
-      title: '¿Tienes acceso a un gimnasio?',
+      ),
+      isValid: () => typeof surveyData.sessionDurationMinutes === 'number',
+    });
+
+    list.push({
+      key: 'equipment',
+      title: 'Acceso a equipamiento',
       subtitle: 'Esto nos ayudará a personalizar tu rutina',
       component: (
         <View style={styles.optionsContainer}>
-          <TouchableOpacity
-            style={[
-              styles.optionCard,
-              { backgroundColor: theme.colors.card },
-              surveyData.hasGym && { borderColor: theme.colors.accent, borderWidth: 2 }
-            ]}
-            onPress={() => setSurveyData({ ...surveyData, hasGym: true })}
-          >
-            <Ionicons name="fitness" size={24} color={theme.colors.accent} />
-            <Text style={[styles.optionText, { color: theme.colors.text }]}>Sí, tengo gimnasio</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.optionCard,
-              { backgroundColor: theme.colors.card },
-              !surveyData.hasGym && { borderColor: theme.colors.accent, borderWidth: 2 }
-            ]}
-            onPress={() => setSurveyData({ ...surveyData, hasGym: false })}
-          >
-            <Ionicons name="home" size={24} color={theme.colors.accent} />
-            <Text style={[styles.optionText, { color: theme.colors.text }]}>Solo en casa</Text>
-          </TouchableOpacity>
+          {EQUIPMENT_OPTIONS.map((e) => (
+            <TouchableOpacity
+              key={e.id}
+              style={[
+                styles.optionCard,
+                { backgroundColor: theme.colors.card },
+                surveyData.equipmentAccess === e.id && { borderColor: theme.colors.accent, borderWidth: 2 }
+              ]}
+              onPress={() => setSurveyData({ ...surveyData, equipmentAccess: e.id })}
+            >
+              <Ionicons name={e.icon as any} size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{e.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      )
-    },
-    {
+      ),
+      isValid: () => !!surveyData.equipmentAccess,
+    });
+
+    list.push({
+      key: 'metrics',
+      title: 'Tus medidas',
+      subtitle: 'Ingresa tu peso y altura',
+      component: (
+        <View style={{ gap: 12 }}>
+          <View style={styles.inputContainer}>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Peso (kg)</Text>
+            <TextInput
+              style={[styles.numberInput, { color: theme.colors.text, borderColor: theme.colors.card }]}
+              value={surveyData.weightKg != null ? String(surveyData.weightKg) : ''}
+              onChangeText={(text) => {
+                const n = Number(text.replace(',', '.'));
+                setSurveyData({ ...surveyData, weightKg: isNaN(n) ? null : n });
+              }}
+              keyboardType="numeric"
+              placeholder="70"
+              placeholderTextColor="#aaa"
+            />
+          </View>
+          <View style={styles.inputContainer}>
+            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Altura (cm)</Text>
+            <TextInput
+              style={[styles.numberInput, { color: theme.colors.text, borderColor: theme.colors.card }]}
+              value={surveyData.heightCm != null ? String(surveyData.heightCm) : ''}
+              onChangeText={(text) => {
+                const n = parseInt(text, 10);
+                setSurveyData({ ...surveyData, heightCm: isNaN(n) ? null : n });
+              }}
+              keyboardType="numeric"
+              placeholder="175"
+              placeholderTextColor="#aaa"
+            />
+          </View>
+        </View>
+      ),
+      isValid: () => {
+        const w = surveyData.weightKg ?? 0;
+        const h = surveyData.heightCm ?? 0;
+        return w > 20 && w < 350 && h > 80 && h < 250;
+      },
+    });
+
+    list.push({
+      key: 'experience',
       title: '¿Cuál es tu nivel de experiencia?',
       subtitle: 'Para adaptar la dificultad',
       component: (
@@ -193,7 +296,7 @@ export default function InitialSurveyScreen({ navigation }: any) {
                 { backgroundColor: theme.colors.card },
                 surveyData.experience === level.id && { borderColor: theme.colors.accent, borderWidth: 2 }
               ]}
-              onPress={() => setSurveyData({ ...surveyData, experience: level.id })}
+              onPress={() => setSurveyData({ ...surveyData, experience: level.id as SurveyData['experience'] })}
             >
               <View style={styles.experienceContent}>
                 <Text style={[styles.optionText, { color: theme.colors.text }]}>{level.label}</Text>
@@ -202,28 +305,181 @@ export default function InitialSurveyScreen({ navigation }: any) {
             </TouchableOpacity>
           ))}
         </View>
-      )
-    },
-    {
-      title: '¿Qué te motiva más?',
-      subtitle: 'Cuéntanos tu principal motivación',
+      ),
+      isValid: () => !!surveyData.experience,
+    });
+
+    list.push({
+      key: 'has_injury',
+      title: 'Lesiones, enfermedades o limitaciones',
+      subtitle: '¿Tienes alguna lesión o condición que afecte tu entrenamiento?',
       component: (
-        <View style={styles.inputContainer}>
-          <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Tu motivación</Text>
-          <TextInput
-            style={[styles.textArea, { color: theme.colors.text, borderColor: theme.colors.card }]}
-            value={surveyData.motivation}
-            onChangeText={(text) => setSurveyData({ ...surveyData, motivation: text })}
-            placeholder="Ej: Quiero sentirme más fuerte y confiado..."
-            placeholderTextColor="#aaa"
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
+        <View style={styles.optionsContainer}>
+          <TouchableOpacity
+            style={[
+              styles.optionCard,
+              { backgroundColor: theme.colors.card },
+              surveyData.hasInjury === false && { borderColor: theme.colors.accent, borderWidth: 2 }
+            ]}
+            onPress={() => setSurveyData({ ...surveyData, hasInjury: false, injuries: [], mobilityRestriction: 'none' })}
+          >
+            <Ionicons name="checkmark-circle" size={24} color={theme.colors.accent} />
+            <Text style={[styles.optionText, { color: theme.colors.text }]}>No</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.optionCard,
+              { backgroundColor: theme.colors.card },
+              surveyData.hasInjury === true && { borderColor: theme.colors.accent, borderWidth: 2 }
+            ]}
+            onPress={() => setSurveyData({ ...surveyData, hasInjury: true })}
+          >
+            <Ionicons name="alert-circle" size={24} color={theme.colors.accent} />
+            <Text style={[styles.optionText, { color: theme.colors.text }]}>Sí</Text>
+          </TouchableOpacity>
         </View>
-      )
+      ),
+      isValid: () => surveyData.hasInjury !== null,
+    });
+
+    if (surveyData.hasInjury) {
+      list.push({
+        key: 'injuries',
+        title: 'Selecciona tus condiciones',
+        subtitle: 'Elige todas las que apliquen',
+        component: (
+          <View style={styles.optionsContainer}>
+            {INJURY_OPTIONS.map((inj) => {
+              const active = surveyData.injuries.includes(inj.id);
+              return (
+                <TouchableOpacity
+                  key={inj.id}
+                  style={[
+                    styles.optionCard,
+                    { backgroundColor: theme.colors.card },
+                    active && { borderColor: theme.colors.accent, borderWidth: 2 }
+                  ]}
+                  onPress={() => {
+                    const exists = surveyData.injuries.includes(inj.id);
+                    const next = exists
+                      ? surveyData.injuries.filter((x) => x !== inj.id)
+                      : [...surveyData.injuries, inj.id];
+                    setSurveyData({ ...surveyData, injuries: next });
+                  }}
+                >
+                  <Ionicons name="medical" size={24} color={theme.colors.accent} />
+                  <Text style={[styles.optionText, { color: theme.colors.text }]}>{inj.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ),
+        isValid: () => surveyData.injuries.length > 0,
+      });
+
+      list.push({
+        key: 'mobility',
+        title: 'Restricciones de movilidad',
+        subtitle: '¿Tienes restricciones específicas de movimiento?',
+        component: (
+          <View style={styles.optionsContainer}>
+            {MOBILITY_RESTRICTIONS.map((m) => (
+              <TouchableOpacity
+                key={m.id}
+                style={[
+                  styles.optionCard,
+                  { backgroundColor: theme.colors.card },
+                  surveyData.mobilityRestriction === m.id && { borderColor: theme.colors.accent, borderWidth: 2 }
+                ]}
+                onPress={() => setSurveyData({ ...surveyData, mobilityRestriction: m.id as SurveyData['mobilityRestriction'] })}
+              >
+                <Ionicons name="walk" size={24} color={theme.colors.accent} />
+                <Text style={[styles.optionText, { color: theme.colors.text }]}>{m.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        ),
+        isValid: () => !!surveyData.mobilityRestriction,
+      });
     }
-  ];
+
+    list.push({
+      key: 'style',
+      title: 'Preferencias de entrenamiento',
+      subtitle: '¿Qué estilo prefieres?',
+      component: (
+        <View style={styles.optionsContainer}>
+          {TRAINING_STYLES.map((s) => (
+            <TouchableOpacity
+              key={s.id}
+              style={[
+                styles.optionCard,
+                { backgroundColor: theme.colors.card },
+                surveyData.trainingPreference === s.id && { borderColor: theme.colors.accent, borderWidth: 2 }
+              ]}
+              onPress={() => setSurveyData({ ...surveyData, trainingPreference: s.id as SurveyData['trainingPreference'] })}
+            >
+              <Ionicons name="fitness" size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{s.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ),
+      isValid: () => !!surveyData.trainingPreference,
+    });
+
+    list.push({
+      key: 'aesthetic',
+      title: 'Objetivo físico final (estético)',
+      subtitle: 'Elige tu objetivo físico',
+      component: (
+        <View style={styles.optionsContainer}>
+          {AESTHETIC_GOALS.map((type) => (
+            <TouchableOpacity
+              key={type.id}
+              style={[
+                styles.optionCard,
+                { backgroundColor: theme.colors.card },
+                surveyData.aestheticGoal === type.id && { borderColor: theme.colors.accent, borderWidth: 2 }
+              ]}
+              onPress={() => setSurveyData({ ...surveyData, aestheticGoal: type.id as SurveyData['aestheticGoal'] })}
+            >
+              <Ionicons name={type.icon as any} size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{type.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ),
+      isValid: () => !!surveyData.aestheticGoal,
+    });
+
+    list.push({
+      key: 'sleep',
+      title: 'Descanso y recuperación',
+      subtitle: '¿Cuántas horas duermes al día?',
+      component: (
+        <View style={styles.optionsContainer}>
+          {SLEEP_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[
+                styles.optionCard,
+                { backgroundColor: theme.colors.card },
+                surveyData.sleepHoursRange === opt.id && { borderColor: theme.colors.accent, borderWidth: 2 }
+              ]}
+              onPress={() => setSurveyData({ ...surveyData, sleepHoursRange: opt.id as SurveyData['sleepHoursRange'] })}
+            >
+              <Ionicons name="moon" size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ),
+      isValid: () => !!surveyData.sleepHoursRange,
+    });
+
+    return list;
+  }, [selectedMuscles, surveyData, theme.colors.accent, theme.colors.card, theme.colors.text]);
 
   // Si el usuario ya completó la encuesta, saltar directamente al Home
   useEffect(() => {
@@ -262,14 +518,13 @@ export default function InitialSurveyScreen({ navigation }: any) {
     }, [currentStep])
   );
 
-  const canProceed = () => {
-    const step = steps[currentStep];
-    if (step.title.includes('músculos') && selectedMuscles.length === 0) return false;
-    if (step.title.includes('meta principal') && !surveyData.goal) return false;
-    if (step.title.includes('tipo de cuerpo') && !surveyData.bodyType) return false;
-    if (step.title.includes('experiencia') && !surveyData.experience) return false;
-    return true;
-  };
+  useEffect(() => {
+    if (currentStep > steps.length - 1) {
+      setCurrentStep(steps.length - 1);
+    }
+  }, [steps.length]);
+
+  const canProceed = () => steps[currentStep]?.isValid?.() ?? false;
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
@@ -290,15 +545,28 @@ export default function InitialSurveyScreen({ navigation }: any) {
       await saveObjectives(user.id, selectedMuscles);
       // Guardar respuestas del survey
       stage = 'save_survey';
+      const goalLabel = (GOALS.find((g) => g.id === surveyData.goal)?.label) || surveyData.goal;
       await supabase.from('initial_survey').upsert({
         user_id: user.id,
-        goal: surveyData.goal,
-        target_days: surveyData.targetDays,
-        body_type: surveyData.bodyType,
-        hours_per_week: surveyData.hoursPerWeek,
-        has_gym: surveyData.hasGym,
+        goal: goalLabel,
+        days_per_week: surveyData.daysPerWeek,
+        session_duration_minutes: surveyData.sessionDurationMinutes,
+        equipment_access: surveyData.equipmentAccess,
+        weight_kg: surveyData.weightKg,
+        height_cm: surveyData.heightCm,
         experience: surveyData.experience,
-        motivation: surveyData.motivation,
+        has_injury: surveyData.hasInjury,
+        injuries: surveyData.injuries,
+        mobility_restriction: surveyData.mobilityRestriction || null,
+        training_preference: surveyData.trainingPreference,
+        aesthetic_goal: surveyData.aestheticGoal,
+        sleep_hours_range: surveyData.sleepHoursRange,
+        // compatibilidad antigua (no se usan en la nueva lógica)
+        target_days: null,
+        body_type: null,
+        hours_per_week: null,
+        has_gym: surveyData.equipmentAccess === 'full_gym',
+        motivation: null,
         completed_at: new Date().toISOString(),
       });
 

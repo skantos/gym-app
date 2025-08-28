@@ -7,7 +7,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useUser } from '../../context/UserContext';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
-import BackgroundTheme from '../../components/BackgroundTheme';
+// import BackgroundTheme from '../../components/BackgroundTheme';
 // duplicates removed
 
 export default function LoginScreen() {
@@ -62,8 +62,8 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
-      <BackgroundTheme />
+    <View style={[styles.container, { backgroundColor: '#000' }]}> 
+      {/* BackgroundTheme removed to keep solid black background */}
       
       {/* Header Section */}
       <Animated.View 

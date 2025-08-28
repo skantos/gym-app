@@ -6,11 +6,13 @@ import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
 import InitialSurveyScreen from '../screens/OnboardingScreen/InitialSurveyScreen';
 import { useUser } from '../context/UserContext';
+import { supabase } from '../services/supabase';
 
 const Stack = createStackNavigator();
 
 export default function AppNavigator() {
   const [showSplash, setShowSplash] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
   const { isAuthenticated, user } = useUser();
 
   useEffect(() => {
@@ -22,7 +24,20 @@ export default function AppNavigator() {
     return () => clearTimeout(timer);
   }, []);
 
-  if (showSplash) {
+  useEffect(() => {
+    // Forzar mostrar Login al inicio: cerrar sesión antes de salir del Splash
+    let cancelled = false;
+    (async () => {
+      try {
+        await supabase.auth.signOut();
+      } finally {
+        if (!cancelled) setAuthReady(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (showSplash || !authReady) {
     return <SplashScreen />;
   }
 

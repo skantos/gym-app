@@ -7,10 +7,14 @@ const extra = (Constants.expoConfig?.extra as any)
 	|| ((Constants as any).manifest?.extra as any)
 	|| ((Constants as any).manifest2?.extra as any);
 
-const supabaseUrl = extra?.supabaseUrl;
-const supabaseAnonKey = extra?.supabaseAnonKey;
+const supabaseUrl = extra?.supabaseUrl as string | undefined;
+const supabaseAnonKey = extra?.supabaseAnonKey as string | undefined;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+if (!supabaseUrl || !supabaseAnonKey) {
+	console.warn('[Supabase] Variables EXPO_PUBLIC_SUPABASE_URL/ANON_KEY no definidas en extra.');
+}
+
+export const supabase = createClient(supabaseUrl || '', supabaseAnonKey || '', {
 	auth: {
 		storage: AsyncStorage,
 		autoRefreshToken: true,
