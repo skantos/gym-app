@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, BackHandler } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
@@ -244,36 +244,13 @@ export default function InitialSurveyScreen({ navigation }: any) {
       title: 'Tus medidas',
       subtitle: 'Ingresa tu peso y altura',
       component: (
-        <View style={{ gap: 12 }}>
-          <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Peso (kg)</Text>
-            <TextInput
-              style={[styles.numberInput, { color: theme.colors.text, borderColor: theme.colors.card }]}
-              value={surveyData.weightKg != null ? String(surveyData.weightKg) : ''}
-              onChangeText={(text) => {
-                const n = Number(text.replace(',', '.'));
-                setSurveyData({ ...surveyData, weightKg: isNaN(n) ? null : n });
-              }}
-              keyboardType="numeric"
-              placeholder="70"
-              placeholderTextColor="#aaa"
-            />
-          </View>
-          <View style={styles.inputContainer}>
-            <Text style={[styles.inputLabel, { color: theme.colors.text }]}>Altura (cm)</Text>
-            <TextInput
-              style={[styles.numberInput, { color: theme.colors.text, borderColor: theme.colors.card }]}
-              value={surveyData.heightCm != null ? String(surveyData.heightCm) : ''}
-              onChangeText={(text) => {
-                const n = parseInt(text, 10);
-                setSurveyData({ ...surveyData, heightCm: isNaN(n) ? null : n });
-              }}
-              keyboardType="numeric"
-              placeholder="175"
-              placeholderTextColor="#aaa"
-            />
-          </View>
-        </View>
+        <MetricsWheels
+          themeColors={theme.colors}
+          weightKg={surveyData.weightKg}
+          heightCm={surveyData.heightCm}
+          onChangeWeight={(w) => setSurveyData({ ...surveyData, weightKg: w })}
+          onChangeHeight={(h) => setSurveyData({ ...surveyData, heightCm: h })}
+        />
       ),
       isValid: () => {
         const w = surveyData.weightKg ?? 0;
@@ -791,3 +768,117 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
 });
+
+// Componente local: ruedas para peso y altura
+function MetricsWheels({
+  themeColors,
+  weightKg,
+  heightCm,
+  onChangeWeight,
+  onChangeHeight,
+}: {
+  themeColors: any;
+  weightKg: number | null;
+  heightCm: number | null;
+  onChangeWeight: (w: number) => void;
+  onChangeHeight: (h: number) => void;
+}) {
+  const weights = useMemo(() => Array.from({ length: 331 }, (_, i) => 20 + i), []); // 20..350
+  const heights = useMemo(() => Array.from({ length: 161 }, (_, i) => 80 + i), []); // 80..240
+  const wIndex = Math.max(0, (weightKg ?? 70) - 20);
+  const hIndex = Math.max(0, (heightCm ?? 170) - 80);
+
+  return (
+    <View style={{ flexDirection: 'row', gap: 16, justifyContent: 'space-between' }}>
+      <Wheel
+        items={weights}
+        unit="kg"
+        initialIndex={wIndex}
+        onChange={(val) => onChangeWeight(val)}
+        themeColors={themeColors}
+        label="Peso"
+      />
+      <Wheel
+        items={heights}
+        unit="cm"
+        initialIndex={hIndex}
+        onChange={(val) => onChangeHeight(val)}
+        themeColors={themeColors}
+        label="Altura"
+      />
+    </View>
+  );
+}
+
+function Wheel({
+  items,
+  unit,
+  initialIndex,
+  onChange,
+  themeColors,
+  label,
+}: {
+  items: number[];
+  unit: string;
+  initialIndex: number;
+  onChange: (val: number) => void;
+  themeColors: any;
+  label: string;
+}) {
+  const itemHeight = 36;
+  const listRef = useRef<ScrollView | null>(null);
+  const [index, setIndex] = useState(initialIndex);
+
+  useEffect(() => {
+    setTimeout(() => {
+      listRef.current?.scrollTo({ y: initialIndex * itemHeight, animated: false });
+    }, 0);
+  }, [initialIndex]);
+
+  const onScrollEnd = (e: any) => {
+    const y = e.nativeEvent.contentOffset.y;
+    const idx = Math.round(y / itemHeight);
+    const bounded = Math.max(0, Math.min(items.length - 1, idx));
+    setIndex(bounded);
+    onChange(items[bounded]);
+  };
+
+  return (
+    <View style={{ flex: 1, alignItems: 'center' }}>
+      <Text style={{ color: themeColors.text, fontWeight: '600', marginBottom: 8 }}>{label}</Text>
+      <View style={{ height: itemHeight * 5, overflow: 'hidden', width: '100%' }}>
+        <ScrollView
+          ref={(r) => { listRef.current = r; }}
+          showsVerticalScrollIndicator={false}
+          snapToInterval={itemHeight}
+          decelerationRate="fast"
+          onMomentumScrollEnd={onScrollEnd}
+          onScrollEndDrag={onScrollEnd}
+        >
+          <View style={{ height: itemHeight * 2 }} />
+          {items.map((val, i) => {
+            const selected = i === index;
+            return (
+              <View key={val} style={{ height: itemHeight, justifyContent: 'center', alignItems: 'center' }}>
+                <Text style={{
+                  color: selected ? themeColors.accent : themeColors.text + '88',
+                  fontSize: selected ? 18 : 16,
+                  fontWeight: selected ? '700' : '500',
+                }}>
+                  {val} {unit}
+                </Text>
+              </View>
+            );
+          })}
+          <View style={{ height: itemHeight * 2 }} />
+        </ScrollView>
+        {/* indicador central */}
+        <View style={{
+          position: 'absolute', top: itemHeight * 2, left: 0, right: 0, height: itemHeight,
+          borderTopWidth: 1, borderBottomWidth: 1, borderColor: themeColors.accent + '55'
+        }} />
+      </View>
+    </View>
+  );
+}
+
