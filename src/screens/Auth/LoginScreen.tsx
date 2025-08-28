@@ -70,17 +70,7 @@ export default function LoginScreen() {
         entering={FadeInUp.delay(200).springify()} 
         style={styles.headerSection}
       >
-        <View style={styles.logoContainer}>
-          <LinearGradient
-            colors={[theme.colors.accent + '20', 'transparent']}
-            style={styles.logoGradient}
-          >
-            <Text style={[styles.logoText, { color: theme.colors.text }]}> 
-              IRON<Text style={{ color: theme.colors.accent }}>FORGE</Text>
-            </Text>
-          </LinearGradient>
-        </View>
-        
+
         <Text style={[styles.welcomeText, { color: '#9CA3AF' }]}> 
           Bienvenido de vuelta
         </Text>

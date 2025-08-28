@@ -214,7 +214,7 @@ function TabNavigator() {
 export default function MainTabNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="MainTabs" component={TabNavigator} />
+      <Stack.Screen name="TabsRoot" component={TabNavigator} />
       <Stack.Screen
         name="CreateRoutine"
         component={CreateRoutineScreen}
