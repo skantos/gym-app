@@ -34,42 +34,37 @@ export default function AIRoutineScreen() {
   const onGenerate = async () => {
     try {
       setLoading(true);
-      // 1) Informacion del usuario
+      // Priorizar IA
+      try {
+        const data = await requestAIRoutine('Rutina generada por IA');
+        setResult(data.generated);
+        Alert.alert('Listo', 'Rutina generada por IA');
+        return;
+      } catch (_) {
+        // Fallback a BD si la IA falla
+      }
+
+      // Fallback: construir desde BD según objetivos y preferencias
       const session = await supabase.auth.getSession();
       const userId = session.data.session?.user?.id;
-      // 2) Objetivos/músculos
       const objectives = userId ? await getObjectives(userId) : null;
       const muscleGroups = objectives?.muscleGroups?.length ? objectives.muscleGroups : ['chest','upper-back','quadriceps','hamstring','gluteal','deltoids','biceps','triceps','calves','abs'];
-
-      // 3) Leer initial_survey para días/experiencia/equipamiento
       const { data: survey } = await supabase
         .from('initial_survey')
         .select('days_per_week, experience, equipment_access')
         .eq('user_id', userId)
         .maybeSingle();
-
       const daysPerWeek = survey?.days_per_week ?? 5;
       const experience = (survey?.experience ?? 'beginner') as 'beginner'|'intermediate'|'advanced';
       const equipmentAccess = (survey?.equipment_access ?? 'full_gym') as 'full_gym'|'home_dumbbells_bands'|'bodyweight';
-
-      // 4) Intentar construir desde BD
-      try {
-        const built = await buildRoutineFromDB({
-          muscleGroups,
-          daysPerWeek,
-          experience,
-          equipmentAccess,
-        });
-        setResult({ name: built.name, description: built.description, days: built.days });
-        Alert.alert('Listo', 'Rutina generada desde BD');
-        return;
-      } catch (e) {
-        // fallback a IA si falla o si la BD está vacía
-      }
-
-      const data = await requestAIRoutine('Rutina generada por IA');
-      setResult(data.generated);
-      Alert.alert('Listo', 'Rutina generada por IA');
+      const built = await buildRoutineFromDB({
+        muscleGroups,
+        daysPerWeek,
+        experience,
+        equipmentAccess,
+      });
+      setResult({ name: built.name, description: built.description, days: built.days });
+      Alert.alert('Listo', 'Rutina generada desde tus datos');
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'No se pudo generar la rutina');
     } finally {
