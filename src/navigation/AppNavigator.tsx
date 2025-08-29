@@ -9,12 +9,12 @@ import { useUser } from '../context/UserContext';
 const Stack = createStackNavigator();
 
 export default function AppNavigator() {
-  const { isAuthenticated, user } = useUser();
+  const { isAuthenticated, user, forceLoginOnStart } = useUser();
 
   // Si no hay autenticación, mostrar login/register
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!isAuthenticated ? (
+      {!isAuthenticated || forceLoginOnStart ? (
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />

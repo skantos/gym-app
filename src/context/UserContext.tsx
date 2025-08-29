@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../services/supabase';
 
 interface User {
@@ -18,6 +19,7 @@ interface UserContextType {
 	registerWithEmail: (name: string, email: string, password: string, gender: 'male' | 'female') => Promise<void>;
 	logout: () => Promise<void>;
 	markSurveyCompleted: () => void;
+  forceLoginOnStart: boolean;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -29,8 +31,17 @@ interface UserProviderProps {
 export function UserProvider({ children }: UserProviderProps) {
 	const [user, setUser] = useState<User | null>(null);
 	const [initialized, setInitialized] = useState(false);
+  const [forceLoginOnStart, setForceLoginOnStart] = useState<boolean>(false);
 
 	useEffect(() => {
+		// Leer preferencia local para forzar login al iniciar
+		(async () => {
+			try {
+				const v = await AsyncStorage.getItem('forceLoginOnStart');
+				setForceLoginOnStart(v === 'true');
+			} catch { /* ignore */ }
+		})();
+
 		const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
 			const authUser = session?.user;
 			if (authUser?.id) {
@@ -86,6 +97,9 @@ export function UserProvider({ children }: UserProviderProps) {
 	const loginWithEmail = async (email: string, password: string) => {
 		const { error } = await supabase.auth.signInWithPassword({ email, password });
 		if (error) throw error;
+    // Ya no forzar login al próximo arranque
+    setForceLoginOnStart(false);
+    try { await AsyncStorage.setItem('forceLoginOnStart', 'false'); } catch {}
 	};
 
 	const registerWithEmail = async (name: string, email: string, password: string, gender: 'male' | 'female') => {
@@ -114,10 +128,16 @@ export function UserProvider({ children }: UserProviderProps) {
 				gender,
 			});
 		}
+    // Ya no forzar login al próximo arranque
+    setForceLoginOnStart(false);
+    try { await AsyncStorage.setItem('forceLoginOnStart', 'false'); } catch {}
 	};
 
 	const logout = async () => {
 		await supabase.auth.signOut();
+    // Forzar login en próximo arranque
+    setForceLoginOnStart(true);
+    try { await AsyncStorage.setItem('forceLoginOnStart', 'true'); } catch {}
 	};
 
 	const markSurveyCompleted = () => {
@@ -131,7 +151,8 @@ export function UserProvider({ children }: UserProviderProps) {
 		registerWithEmail,
 		logout,
 		markSurveyCompleted,
-	}), [user, isAuthenticated]);
+    forceLoginOnStart,
+	}), [user, isAuthenticated, forceLoginOnStart]);
 
 	if (!initialized) {
 		return null;
