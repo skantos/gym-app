@@ -11,21 +11,18 @@ const Stack = createStackNavigator();
 export default function AppNavigator() {
   const { isAuthenticated, user } = useUser();
 
-
-
+  // Si no hay autenticación, mostrar login/register
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {isAuthenticated ? (
-        user?.hasCompletedSurvey ? (
-          <Stack.Screen name="MainTabs" component={MainTabNavigator} />
-        ) : (
-          <Stack.Screen name="InitialSurvey" component={InitialSurveyScreen} options={{ gestureEnabled: false }} />
-        )
-      ) : (
+      {!isAuthenticated ? (
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
           <Stack.Screen name="Register" component={RegisterScreen} />
         </>
+      ) : user?.hasCompletedSurvey ? (
+        <Stack.Screen name="MainTabs" component={MainTabNavigator} />
+      ) : (
+        <Stack.Screen name="InitialSurvey" component={InitialSurveyScreen} options={{ gestureEnabled: false }} />
       )}
     </Stack.Navigator>
   );

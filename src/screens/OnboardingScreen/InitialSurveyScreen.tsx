@@ -22,6 +22,14 @@ type SurveyData = {
   sleepHoursRange: '' | 'lt6' | '6_7' | '7_8' | 'gt8';
   weightKg: number | null;
   heightCm: number | null;
+  // Nuevas preferencias (solo selección)
+  splitPreference: '' | 'full_body' | 'upper_lower' | 'push_pull_legs';
+  preferredTime: '' | 'morning' | 'afternoon' | 'evening';
+  intensity: '' | 'low' | 'moderate' | 'high';
+  restPreference: '' | 'short' | 'standard' | 'long';
+  warmupPreference: '' | 'short' | 'standard' | 'extended';
+  supersetsPreference: '' | 'none' | 'sometimes' | 'frequent';
+  dropsetsPreference: '' | 'none' | 'sometimes' | 'frequent';
 };
 
 const GOALS = [
@@ -93,6 +101,49 @@ const SLEEP_OPTIONS = [
   { id: 'gt8', label: 'Más de 8h' },
 ];
 
+// Nuevos conjuntos de opciones
+const SPLIT_OPTIONS = [
+  { id: 'full_body', label: 'Full body' },
+  { id: 'upper_lower', label: 'Upper / Lower' },
+  { id: 'push_pull_legs', label: 'Push / Pull / Legs' },
+] as const;
+
+const TIME_OPTIONS = [
+  { id: 'morning', label: 'Mañana' },
+  { id: 'afternoon', label: 'Tarde' },
+  { id: 'evening', label: 'Noche' },
+] as const;
+
+const INTENSITY_OPTIONS = [
+  { id: 'low', label: 'Baja' },
+  { id: 'moderate', label: 'Moderada' },
+  { id: 'high', label: 'Alta' },
+] as const;
+
+const REST_OPTIONS = [
+  { id: 'short', label: 'Corta (30-60s)' },
+  { id: 'standard', label: 'Estándar (60-90s)' },
+  { id: 'long', label: 'Larga (90-120s)' },
+] as const;
+
+const WARMUP_OPTIONS = [
+  { id: 'short', label: 'Breve (5 min)' },
+  { id: 'standard', label: 'Estándar (10 min)' },
+  { id: 'extended', label: 'Extendido (15+ min)' },
+] as const;
+
+const SUPERSETS_OPTIONS = [
+  { id: 'none', label: 'No usar' },
+  { id: 'sometimes', label: 'A veces' },
+  { id: 'frequent', label: 'Frecuente' },
+] as const;
+
+const DROPSETS_OPTIONS = [
+  { id: 'none', label: 'No usar' },
+  { id: 'sometimes', label: 'A veces' },
+  { id: 'frequent', label: 'Frecuente' },
+] as const;
+
 export default function InitialSurveyScreen({ navigation }: any) {
   const theme = useTheme();
   const { user, markSurveyCompleted } = useUser();
@@ -113,6 +164,13 @@ export default function InitialSurveyScreen({ navigation }: any) {
     sleepHoursRange: '',
     weightKg: null,
     heightCm: null,
+    splitPreference: '',
+    preferredTime: '',
+    intensity: '',
+    restPreference: '',
+    warmupPreference: '',
+    supersetsPreference: '',
+    dropsetsPreference: '',
   });
 
   type Step = {
@@ -405,6 +463,154 @@ export default function InitialSurveyScreen({ navigation }: any) {
       isValid: () => !!surveyData.trainingPreference,
     });
 
+    // Nuevos pasos (solo selección, lineales)
+    list.push({
+      key: 'split',
+      title: 'División preferida',
+      subtitle: '¿Cómo prefieres distribuir tus días?',
+      component: (
+        <View style={styles.optionsContainer}>
+          {SPLIT_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[styles.optionCard, { backgroundColor: theme.colors.card }, surveyData.splitPreference === opt.id && { borderColor: theme.colors.accent, borderWidth: 2 }]}
+              onPress={() => setSurveyData({ ...surveyData, splitPreference: opt.id })}
+            >
+              <Ionicons name="grid" size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ),
+      isValid: () => !!surveyData.splitPreference,
+    });
+
+    list.push({
+      key: 'time',
+      title: 'Horario habitual',
+      subtitle: '¿A qué hora sueles entrenar?',
+      component: (
+        <View style={styles.optionsContainer}>
+          {TIME_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[styles.optionCard, { backgroundColor: theme.colors.card }, surveyData.preferredTime === opt.id && { borderColor: theme.colors.accent, borderWidth: 2 }]}
+              onPress={() => setSurveyData({ ...surveyData, preferredTime: opt.id })}
+            >
+              <Ionicons name="time" size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ),
+      isValid: () => !!surveyData.preferredTime,
+    });
+
+    list.push({
+      key: 'intensity',
+      title: 'Intensidad deseada',
+      subtitle: 'Elige cómo quieres sentir el entrenamiento',
+      component: (
+        <View style={styles.optionsContainer}>
+          {INTENSITY_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[styles.optionCard, { backgroundColor: theme.colors.card }, surveyData.intensity === opt.id && { borderColor: theme.colors.accent, borderWidth: 2 }]}
+              onPress={() => setSurveyData({ ...surveyData, intensity: opt.id })}
+            >
+              <Ionicons name="flame" size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ),
+      isValid: () => !!surveyData.intensity,
+    });
+
+    list.push({
+      key: 'rest',
+      title: 'Descansos entre series',
+      subtitle: 'Preferencia de descanso',
+      component: (
+        <View style={styles.optionsContainer}>
+          {REST_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[styles.optionCard, { backgroundColor: theme.colors.card }, surveyData.restPreference === opt.id && { borderColor: theme.colors.accent, borderWidth: 2 }]}
+              onPress={() => setSurveyData({ ...surveyData, restPreference: opt.id })}
+            >
+              <Ionicons name="pause" size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ),
+      isValid: () => !!surveyData.restPreference,
+    });
+
+    list.push({
+      key: 'warmup',
+      title: 'Calentamiento',
+      subtitle: '¿Cuánto quieres dedicar al calentamiento?',
+      component: (
+        <View style={styles.optionsContainer}>
+          {WARMUP_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[styles.optionCard, { backgroundColor: theme.colors.card }, surveyData.warmupPreference === opt.id && { borderColor: theme.colors.accent, borderWidth: 2 }]}
+              onPress={() => setSurveyData({ ...surveyData, warmupPreference: opt.id })}
+            >
+              <Ionicons name="hand-left" size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ),
+      isValid: () => !!surveyData.warmupPreference,
+    });
+
+    list.push({
+      key: 'supersets',
+      title: 'Superseries',
+      subtitle: '¿Quieres usar superseries?',
+      component: (
+        <View style={styles.optionsContainer}>
+          {SUPERSETS_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[styles.optionCard, { backgroundColor: theme.colors.card }, surveyData.supersetsPreference === opt.id && { borderColor: theme.colors.accent, borderWidth: 2 }]}
+              onPress={() => setSurveyData({ ...surveyData, supersetsPreference: opt.id })}
+            >
+              <Ionicons name="repeat" size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ),
+      isValid: () => !!surveyData.supersetsPreference,
+    });
+
+    list.push({
+      key: 'dropsets',
+      title: 'Dropsets',
+      subtitle: '¿Quieres incluir dropsets?',
+      component: (
+        <View style={styles.optionsContainer}>
+          {DROPSETS_OPTIONS.map((opt) => (
+            <TouchableOpacity
+              key={opt.id}
+              style={[styles.optionCard, { backgroundColor: theme.colors.card }, surveyData.dropsetsPreference === opt.id && { borderColor: theme.colors.accent, borderWidth: 2 }]}
+              onPress={() => setSurveyData({ ...surveyData, dropsetsPreference: opt.id })}
+            >
+              <Ionicons name="download" size={24} color={theme.colors.accent} />
+              <Text style={[styles.optionText, { color: theme.colors.text }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ),
+      isValid: () => !!surveyData.dropsetsPreference,
+    });
+
     list.push({
       key: 'aesthetic',
       title: 'Objetivo físico final (estético)',
@@ -538,6 +744,13 @@ export default function InitialSurveyScreen({ navigation }: any) {
         training_preference: surveyData.trainingPreference,
         aesthetic_goal: surveyData.aestheticGoal,
         sleep_hours_range: surveyData.sleepHoursRange,
+        split_preference: surveyData.splitPreference || null,
+        preferred_time: surveyData.preferredTime || null,
+        intensity: surveyData.intensity || null,
+        rest_preference: surveyData.restPreference || null,
+        warmup_preference: surveyData.warmupPreference || null,
+        supersets_preference: surveyData.supersetsPreference || null,
+        dropsets_preference: surveyData.dropsetsPreference || null,
         // compatibilidad antigua (no se usan en la nueva lógica)
         target_days: null,
         body_type: null,

@@ -6,30 +6,79 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { RoutineSectionCard } from '../../components/RoutineSectionCard';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { requestAIRoutine, GeneratedRoutine, fetchLatestGeneratedRoutine, fetchLatestRoutineForUser } from '../../services/ai';
 import { buildRoutineFromDB } from '../../services/routineBuilder';
+import { fetchMuscleGroupsForExerciseNames } from '../../services/exercises';
 import { getObjectives } from '../../services/objectives';
 import { supabase } from '../../services/supabase';
 
 export default function AIRoutineScreen() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<any>();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GeneratedRoutine | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [sections, setSections] = useState<Array<{ title: string; description?: string; exercises: Array<{ name: string; sets: number; reps: string | number; rest_seconds: number; notes?: string }> }> | null>(null);
+  const [surveyInfo, setSurveyInfo] = useState<{ daysPerWeek?: number; experience?: 'beginner'|'intermediate'|'advanced'; equipmentAccess?: 'full_gym'|'home_dumbbells_bands'|'bodyweight' } | null>(null);
 
   useEffect(() => {
     // Al entrar, intentar cargar la última rutina generada guardada
     (async () => {
+      // cargar survey básico para enriquecer descripciones
+      try {
+        const session = await supabase.auth.getSession();
+        const userId = session.data.session?.user?.id;
+        if (userId) {
+          const { data: survey } = await supabase
+            .from('initial_survey')
+            .select('days_per_week, experience, equipment_access')
+            .eq('user_id', userId)
+            .maybeSingle();
+          setSurveyInfo({
+            daysPerWeek: survey?.days_per_week ?? undefined,
+            experience: (survey?.experience ?? undefined) as any,
+            equipmentAccess: (survey?.equipment_access ?? undefined) as any,
+          });
+        }
+      } catch {}
+
       const saved = await fetchLatestGeneratedRoutine();
       if (saved) { setResult(saved); return; }
       const fallback = await fetchLatestRoutineForUser();
       if (fallback) setResult(fallback);
     })();
   }, []);
+
+  // Refrescar automáticamente al volver a esta pantalla
+  useFocusEffect(
+    React.useCallback(() => {
+      onRefresh();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [])
+  );
+
+  const onRefresh = async () => {
+    try {
+      setRefreshing(true);
+      const saved = await fetchLatestGeneratedRoutine();
+      if (saved) { setResult(saved); return; }
+      const fallback = await fetchLatestRoutineForUser();
+      if (fallback) setResult(fallback);
+    } catch (e: any) {
+      // eslint-disable-next-line no-console
+      console.warn('[AI] refresh error:', e?.message || e);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const onGenerate = async () => {
     try {
@@ -75,7 +124,7 @@ export default function AIRoutineScreen() {
   };
 
   const Header = () => (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: Math.max(12, insets.top + 8), paddingHorizontal: 20, paddingBottom: 12 }] }>
       <Text style={[styles.headerTitle, { color: theme.colors.text }]}>IA Rutina</Text>
       <TouchableOpacity
         style={[styles.createButton, { backgroundColor: theme.colors.accent }]}
@@ -105,16 +154,74 @@ export default function AIRoutineScreen() {
     </View>
   );
 
-  const DayCard = ({ day, exercises }: { day: string; exercises: Array<{ name: string; sets: number; reps: string | number; rest_seconds: number }> }) => (
-    <View style={[styles.routineCard, { backgroundColor: theme.colors.card }]}> 
-      <Text style={[styles.dayTitle, { color: theme.colors.text }]}>{day}</Text>
-      <View style={styles.exercisesList}>
-        {exercises.map((ex, idx) => (
-          <Text key={idx} style={[styles.exerciseItem, { color: theme.colors.text + 'CC' }]}>• {ex.name} — {ex.sets}x{ex.reps} · descanso {ex.rest_seconds}s</Text>
-        ))}
-      </View>
-    </View>
-  );
+  // Mapeo: de días a secciones con títulos tipo "Pecho - Tríceps", "Espalda - Bíceps", etc.
+  const toSections = () => {
+    const days = result?.days || [];
+    return days.map((d, i) => {
+      // título inferido si viene un patrón común, si no usamos el 'day'
+      const title = d.day || `Sección ${i + 1}`;
+      const description = 'Diseñada según tus objetivos y experiencia; prioriza grupos clave y recuperación.';
+      return { title, description, exercises: d.exercises };
+    });
+  };
+
+  const enrichSections = async () => {
+    const sections = toSections();
+    const allNames = sections.flatMap((s) => s.exercises.map((e) => e.name));
+    if (allNames.length === 0) return sections;
+    try {
+      const nameToGroup = await fetchMuscleGroupsForExerciseNames(allNames);
+      return sections.map((s) => {
+        const groups = Array.from(new Set(s.exercises.map((e) => nameToGroup[e.name]).filter(Boolean))) as string[];
+        const inferred = inferTitleFromGroups(groups) || s.title;
+        const desc = buildDescriptionFromGroups(groups, surveyInfo || undefined) || s.description;
+        return { ...s, title: inferred, description: desc };
+      });
+    } catch {
+      return sections;
+    }
+  };
+
+  const inferTitleFromGroups = (groups: string[]): string | null => {
+    const set = new Set(groups.map((g) => (g || '').toLowerCase()));
+    if (set.has('chest') && set.has('triceps')) return 'Pecho - Tríceps';
+    if ((set.has('upper-back') || set.has('lats')) && set.has('biceps')) return 'Espalda - Bíceps';
+    if (set.has('quadriceps') || set.has('hamstring') || set.has('gluteal') || set.has('calves')) return 'Piernas';
+    if (set.has('deltoids')) return 'Hombros';
+    if (set.has('abs') || set.has('core') || set.has('obliques')) return 'Core';
+    return null;
+  };
+
+  const buildDescriptionFromGroups = (groups: string[], info?: { daysPerWeek?: number; experience?: string; equipmentAccess?: string }): string | null => {
+    if (!groups.length) return null;
+    const friendly: Record<string, string> = {
+      'chest': 'pecho', 'triceps': 'tríceps', 'biceps': 'bíceps', 'upper-back': 'espalda alta',
+      'lats': 'dorsales', 'quadriceps': 'cuádriceps', 'hamstring': 'isquios', 'gluteal': 'glúteos',
+      'calves': 'pantorrillas', 'deltoids': 'hombros', 'abs': 'abdominales', 'core': 'core', 'obliques': 'oblicuos'
+    };
+    const readable = Array.from(new Set(groups)).map((g) => friendly[g] || g).join(', ');
+    const expMap: any = { beginner: 'principiante', intermediate: 'intermedio', advanced: 'avanzado' };
+    const parts: string[] = [];
+    parts.push(`Enfoque: ${readable}.`);
+    if (info?.experience) parts.push(`Nivel ${expMap[info.experience] ?? info.experience}.`);
+    if (info?.daysPerWeek) parts.push(`${info.daysPerWeek} días/semana.`);
+    if (info?.equipmentAccess) {
+      const equipLabel = info.equipmentAccess === 'full_gym' ? 'gimnasio completo' : info.equipmentAccess === 'home_dumbbells_bands' ? 'mancuernas/bandas en casa' : 'peso corporal';
+      parts.push(`Equipo: ${equipLabel}.`);
+    }
+    parts.push('Priorizamos técnica, volumen adecuado y recuperación.');
+    return parts.join(' ');
+  };
+
+  // Mantener títulos/descripcion estables
+  useEffect(() => {
+    (async () => {
+      if (!result?.days) { setSections(null); return; }
+      const enriched = await enrichSections();
+      setSections(enriched);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(result?.days), surveyInfo?.daysPerWeek, surveyInfo?.experience, surveyInfo?.equipmentAccess]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
@@ -123,6 +230,14 @@ export default function AIRoutineScreen() {
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}
         contentContainerStyle={{ paddingBottom: 40 + insets.bottom }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={theme.colors.accent}
+            colors={[theme.colors.accent]}
+          />
+        }
       >
         {!result ? (
           <EmptyState />
@@ -134,9 +249,19 @@ export default function AIRoutineScreen() {
                 <Text style={[styles.generatedDesc, { color: theme.colors.text + '99' }]}>{result.description}</Text>
               )}
             </View>
-            {result.days?.map((d, idx) => (
-              <DayCard key={idx} day={d.day} exercises={d.exercises} />
-            ))}
+            {sections ? sections.map((s, idx) => (
+              <RoutineSectionCard key={`${s.title}-${idx}`} title={s.title} description={s.description} exercises={s.exercises} onPress={() => {
+                const rid = (result as any)?.meta?.routine_id;
+                navigation.navigate('RoutineDetail', {
+                  routineId: rid,
+                  sectionIndex: idx,
+                  title: s.title,
+                  exercises: s.exercises,
+                });
+              }} />
+            )) : (
+              <Text style={{ color: theme.colors.text + '80', paddingVertical: 8 }}>Cargando secciones…</Text>
+            )}
             <TouchableOpacity
               style={[styles.emptyButton, { backgroundColor: theme.colors.accent, marginTop: 16 }]}
               onPress={onGenerate}
@@ -150,6 +275,8 @@ export default function AIRoutineScreen() {
     </View>
   );
 }
+
+// Obsoleto: se reemplazó por render directo con estado 'sections'
 
 const styles = StyleSheet.create({
   container: {
@@ -223,13 +350,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   generatedWrapper: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   generatedHeader: {
     borderBottomWidth: 1,
-    paddingBottom: 12,
-    marginBottom: 12,
+    paddingBottom: 10,
+    marginBottom: 10,
   },
   generatedTitle: {
     fontSize: 18,
@@ -241,9 +368,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   routineCard: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
+    padding: 14,
+    borderRadius: 14,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#333',
   },
@@ -255,6 +382,6 @@ const styles = StyleSheet.create({
   exercisesList: {},
   exerciseItem: {
     fontSize: 14,
-    marginBottom: 6,
+    marginBottom: 4,
   },
 });

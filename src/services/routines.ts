@@ -150,6 +150,38 @@ export const deleteRoutine = async (routineId: string): Promise<void> => {
   }
 };
 
+// Actualiza ejercicios de una rutina (sobrescribe la lista completa para una sección/día específico)
+export async function upsertRoutineExercises(params: {
+  routineId: string;
+  dayIndex: number;
+  exercises: Array<{ name: string; sets: number; reps: string | number; rest_seconds: number; notes?: string }>
+}): Promise<void> {
+  const { routineId, dayIndex, exercises } = params;
+  // borrar existentes del día
+  const { error: delErr } = await supabase
+    .from('routine_exercises')
+    .delete()
+    .eq('routine_id', routineId)
+    .eq('day_index', dayIndex);
+  if (delErr) throw delErr;
+
+  // insertar nuevos
+  const rows = exercises.map((ex, idx) => ({
+    routine_id: routineId,
+    day_index: dayIndex,
+    name: ex.name,
+    sets: ex.sets,
+    reps: String(ex.reps),
+    rest_seconds: ex.rest_seconds,
+    notes: ex.notes ?? null,
+    order_index: idx,
+  }));
+  if (rows.length > 0) {
+    const { error: insErr } = await supabase.from('routine_exercises').insert(rows);
+    if (insErr) throw insErr;
+  }
+}
+
 // Obtener rutinas públicas
 export const getPublicRoutines = async (): Promise<Routine[]> => {
   try {

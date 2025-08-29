@@ -60,3 +60,58 @@ export async function seedExercisesIfEmpty(seed: Array<Omit<Exercise, 'id'>>): P
 }
 
 
+// Busca grupos musculares por nombres exactos de ejercicio.
+// Nota: usa coincidencia exacta; si la IA devuelve nombres distintos a tu catálogo, algunos quedarán sin mapear.
+export async function fetchMuscleGroupsForExerciseNames(names: string[]): Promise<Record<string, string | undefined>> {
+  if (!names.length) return {};
+  // evitar listas muy grandes
+  const unique = Array.from(new Set(names)).slice(0, 300);
+  const { data, error } = await supabase
+    .from('exercises')
+    .select('name, muscle_group')
+    .in('name', unique);
+  if (error) throw error;
+  const direct: Record<string, string | undefined> = {};
+  for (const row of (data || []) as any[]) {
+    if (!row?.name) continue;
+    direct[String(row.name)] = row.muscle_group || undefined;
+  }
+
+  // Si cubrió todo, listo
+  if (Object.keys(direct).length >= unique.length) return direct;
+
+  // Fallback: normalizar y hacer matching difuso contra catálogo completo
+  const normalize = (s: string) => s
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // quitar acentos
+    .replace(/[^a-z0-9\s]/g, '') // quitar signos
+    .replace(/\s+/g, ' ') // espacios simples
+    .trim();
+
+  const { data: all, error: allErr } = await supabase
+    .from('exercises')
+    .select('name, muscle_group')
+    .limit(2000);
+  if (allErr) throw allErr;
+  const dbNormMap = new Map<string, { name: string; group?: string }>();
+  for (const row of (all || []) as any[]) {
+    if (!row?.name) continue;
+    dbNormMap.set(normalize(String(row.name)), { name: String(row.name), group: row.muscle_group || undefined });
+  }
+
+  const out: Record<string, string | undefined> = { ...direct };
+  for (const reqName of unique) {
+    if (out[reqName] !== undefined) continue;
+    const norm = normalize(reqName);
+    const hit = dbNormMap.get(norm);
+    if (hit) { out[reqName] = hit.group; continue; }
+    // intento contains simple
+    for (const [k, v] of dbNormMap.entries()) {
+      if (k.includes(norm) || norm.includes(k)) { out[reqName] = v.group; break; }
+    }
+    if (out[reqName] === undefined) out[reqName] = undefined;
+  }
+  return out;
+}
+
+
