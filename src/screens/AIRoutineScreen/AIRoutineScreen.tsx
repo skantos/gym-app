@@ -171,11 +171,23 @@ export default function AIRoutineScreen() {
     if (allNames.length === 0) return sections;
     try {
       const nameToGroup = await fetchMuscleGroupsForExerciseNames(allNames);
+      // leer objetivos para mencionar en descripción
+      let objGroups: string[] = [];
+      try {
+        const session = await supabase.auth.getSession();
+        const userId = session.data.session?.user?.id;
+        if (userId) {
+          const doc = await getObjectives(userId);
+          objGroups = doc?.muscleGroups ?? [];
+        }
+      } catch {}
+
       return sections.map((s) => {
-        const groups = Array.from(new Set(s.exercises.map((e) => nameToGroup[e.name]).filter(Boolean))) as string[];
-        const inferred = inferTitleFromGroups(groups) || s.title;
-        const desc = buildDescriptionFromGroups(groups, surveyInfo || undefined) || s.description;
-        return { ...s, title: inferred, description: desc };
+        const groupsList = s.exercises.map((e) => nameToGroup[e.name]).filter(Boolean) as string[];
+        const groupsSet = Array.from(new Set(groupsList));
+        const focus = focusTitleFromGroups(groupsList) || inferTitleFromGroups(groupsSet) || s.title;
+        const desc = buildDescriptionFromGroups(groupsSet, surveyInfo || undefined, objGroups, focus) || s.description;
+        return { ...s, title: focus, description: desc };
       });
     } catch {
       return sections;
@@ -184,8 +196,8 @@ export default function AIRoutineScreen() {
 
   const inferTitleFromGroups = (groups: string[]): string | null => {
     const set = new Set(groups.map((g) => (g || '').toLowerCase()));
-    if (set.has('chest') && set.has('triceps')) return 'Pecho - Tríceps';
-    if ((set.has('upper-back') || set.has('lats')) && set.has('biceps')) return 'Espalda - Bíceps';
+    if (set.has('chest') && set.has('triceps')) return 'Pecho y Tríceps';
+    if ((set.has('upper-back') || set.has('lats')) && set.has('biceps')) return 'Espalda y Bíceps';
     if (set.has('quadriceps') || set.has('hamstring') || set.has('gluteal') || set.has('calves')) return 'Piernas';
     if (set.has('deltoids')) return 'Hombros';
     if (set.has('abs') || set.has('core') || set.has('obliques')) return 'Core';
@@ -200,7 +212,12 @@ export default function AIRoutineScreen() {
     return `${exp}${days}${equip}Priorizamos grupos clave y recuperación.`.trim();
   };
 
-  const buildDescriptionFromGroups = (groups: string[], info?: { daysPerWeek?: number; experience?: string; equipmentAccess?: string }): string | null => {
+  const buildDescriptionFromGroups = (
+    groups: string[],
+    info?: { daysPerWeek?: number; experience?: string; equipmentAccess?: string },
+    objectives?: string[],
+    focusTitle?: string,
+  ): string | null => {
     if (!groups.length) return null;
     const friendly: Record<string, string> = {
       'chest': 'pecho', 'triceps': 'tríceps', 'biceps': 'bíceps', 'upper-back': 'espalda alta',
@@ -210,16 +227,39 @@ export default function AIRoutineScreen() {
     const readable = Array.from(new Set(groups)).map((g) => friendly[g] || g).join(', ');
     const expMap: any = { beginner: 'principiante', intermediate: 'intermedio', advanced: 'avanzado' };
     const parts: string[] = [];
-    parts.push(`Enfoque: ${readable}.`);
+    parts.push(`Enfocado en ${focusTitle || readable}.`);
     if (info?.experience) parts.push(`Nivel ${expMap[info.experience] ?? info.experience}.`);
     if (info?.daysPerWeek) parts.push(`${info.daysPerWeek} días/semana.`);
     if (info?.equipmentAccess) {
       const equipLabel = info.equipmentAccess === 'full_gym' ? 'gimnasio completo' : info.equipmentAccess === 'home_dumbbells_bands' ? 'mancuernas/bandas en casa' : 'peso corporal';
       parts.push(`Equipo: ${equipLabel}.`);
     }
+    if (objectives && objectives.length) {
+      const objTxt = Array.from(new Set(objectives)).map((g) => friendly[g] || g).join(', ');
+      parts.push(`Alineado a tus objetivos: ${objTxt}.`);
+    }
     parts.push('Priorizamos técnica, volumen adecuado y recuperación.');
     return parts.join(' ');
   };
+
+  // Devuelve un título de enfoque a partir de la frecuencia de grupos (top 1-2)
+  const focusTitleFromGroups = (groups: string[]): string | null => {
+    if (!groups.length) return null;
+    const counts: Record<string, number> = {};
+    for (const g of groups) counts[g] = (counts[g] || 0) + 1;
+    const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).map(([g]) => g.toLowerCase());
+    const top = Array.from(new Set(sorted)).slice(0, 2);
+    const friendly: Record<string, string> = {
+      'chest': 'Pecho', 'triceps': 'Tríceps', 'biceps': 'Bíceps', 'upper-back': 'Espalda', 'lats': 'Espalda',
+      'quadriceps': 'Piernas', 'hamstring': 'Piernas', 'gluteal': 'Piernas', 'calves': 'Piernas',
+      'deltoids': 'Hombros', 'abs': 'Core', 'core': 'Core', 'obliques': 'Core'
+    };
+    if (top.length === 1) return friendly[top[0]] || capitalize(top[0]);
+    if ((top.includes('quadriceps') || top.includes('hamstring') || top.includes('gluteal') || top.includes('calves')) && top.length) return 'Piernas';
+    return `${friendly[top[0]] || capitalize(top[0])} y ${friendly[top[1]] || capitalize(top[1])}`;
+  };
+
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
   // Mantener títulos/descripcion estables
   useEffect(() => {
