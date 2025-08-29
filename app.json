@@ -27,7 +27,11 @@
     },
     "extra": {
       "supabaseUrl": "https://geuurkuqztyomglfgzsb.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdldXVya3VxenR5b21nbGZnenNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NTM2OTMsImV4cCI6MjA3MTEyOTY5M30.DDuzrXqMXUOfGsfLmnOnTmbQu9-DEUA2WHzHdRheLS8"
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdldXVya3VxenR5b21nbGZnenNiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1NTM2OTMsImV4cCI6MjA3MTEyOTY5M30.DDuzrXqMXUOfGsfLmnOnTmbQu9-DEUA2WHzHdRheLS8",
+      "apiUrl": "http://192.168.1.166:8000",
+      "eas": {
+        "projectId": "a19f1f0d-70f4-4fe3-b73d-cabd90969168"
+      }
     },
     "plugins": [
       "expo-font"

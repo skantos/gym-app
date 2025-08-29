@@ -40,7 +40,9 @@ export default function AIRoutineScreen() {
         setResult(data.generated);
         Alert.alert('Listo', 'Rutina generada por IA');
         return;
-      } catch (_) {
+      } catch (e: any) {
+        console.warn('[AI] error:', e?.message || e);
+        Alert.alert('IA', e?.message ?? 'Fallo IA, usando fallback');
         // Fallback a BD si la IA falla
       }
 
@@ -103,7 +105,7 @@ export default function AIRoutineScreen() {
     </View>
   );
 
-  const DayCard = ({ day, exercises }: { day: string; exercises: Array<{ name: string; sets: number; reps: number; rest_seconds: number }> }) => (
+  const DayCard = ({ day, exercises }: { day: string; exercises: Array<{ name: string; sets: number; reps: string | number; rest_seconds: number }> }) => (
     <View style={[styles.routineCard, { backgroundColor: theme.colors.card }]}> 
       <Text style={[styles.dayTitle, { color: theme.colors.text }]}>{day}</Text>
       <View style={styles.exercisesList}>

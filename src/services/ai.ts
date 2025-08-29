@@ -12,24 +12,32 @@ export type GeneratedRoutine = {
   description?: string;
   days?: Array<{
     day: string;
-    exercises: Array<{ name: string; sets: number; reps: number; rest_seconds: number }>;
+    exercises: Array<{ name: string; sets: number; reps: string | number; rest_seconds: number }>;
   }>;
 };
 
-export async function requestAIRoutine(routineName?: string): Promise<{ generated: GeneratedRoutine; saved: { routine_id: string } }>{
+export async function requestAIRoutine(routineName?: string): Promise<{ generated: GeneratedRoutine; saved: { routine_id: string } | null }>{
   if (!apiUrl) throw new Error('EXPO_PUBLIC_API_URL no configurada');
   const session = await supabase.auth.getSession();
   const accessToken = session.data.session?.access_token;
   if (!accessToken) throw new Error('No hay sesión activa');
 
-  const res = await fetch(`${apiUrl}/ai/routine`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({ routine_name: routineName ?? 'Mi rutina AI' }),
-  });
+  // Llama al endpoint real del backend que genera para el usuario autenticado
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout para evitar abort en primer arranque
+  let res: Response;
+  try {
+    res = await fetch(`${apiUrl}/generate-for-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   if (!res.ok) {
     const txt = await res.text();
@@ -37,7 +45,14 @@ export async function requestAIRoutine(routineName?: string): Promise<{ generate
   }
 
   const json = await res.json();
-  return json.data;
+  // El backend devuelve directamente la rutina (GeneratedRoutine) y opcionalmente meta.saved
+  const generated: GeneratedRoutine = {
+    name: json?.name ?? (routineName ?? 'Mi rutina AI'),
+    description: json?.description,
+    days: json?.days,
+  };
+  const saved = (json?.meta && json.meta.saved) ? json.meta.saved : null;
+  return { generated, saved };
 }
 
 // Lee la última rutina generada por IA desde Supabase (si la guardas en una tabla ai_routines)
