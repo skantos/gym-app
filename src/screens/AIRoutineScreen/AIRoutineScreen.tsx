@@ -160,7 +160,7 @@ export default function AIRoutineScreen() {
     return days.map((d, i) => {
       // título inferido si viene un patrón común, si no usamos el 'day'
       const title = d.day || `Sección ${i + 1}`;
-      const description = 'Diseñada según tus objetivos y experiencia; prioriza grupos clave y recuperación.';
+      const description = buildGenericReason();
       return { title, description, exercises: d.exercises };
     });
   };
@@ -190,6 +190,14 @@ export default function AIRoutineScreen() {
     if (set.has('deltoids')) return 'Hombros';
     if (set.has('abs') || set.has('core') || set.has('obliques')) return 'Core';
     return null;
+  };
+
+  const buildGenericReason = (): string => {
+    const expMap: any = { beginner: 'principiante', intermediate: 'intermedio', advanced: 'avanzado' };
+    const exp = surveyInfo?.experience ? `Nivel ${expMap[surveyInfo.experience] ?? surveyInfo.experience}. ` : '';
+    const days = surveyInfo?.daysPerWeek ? `${surveyInfo.daysPerWeek} días/semana. ` : '';
+    const equip = surveyInfo?.equipmentAccess ? `Equipo: ${surveyInfo.equipmentAccess === 'full_gym' ? 'gimnasio completo' : surveyInfo.equipmentAccess === 'home_dumbbells_bands' ? 'mancuernas/bandas' : 'peso corporal'}. ` : '';
+    return `${exp}${days}${equip}Priorizamos grupos clave y recuperación.`.trim();
   };
 
   const buildDescriptionFromGroups = (groups: string[], info?: { daysPerWeek?: number; experience?: string; equipmentAccess?: string }): string | null => {
@@ -252,7 +260,10 @@ export default function AIRoutineScreen() {
             {sections ? sections.map((s, idx) => (
               <RoutineSectionCard key={`${s.title}-${idx}`} title={s.title} description={s.description} exercises={s.exercises} onPress={() => {
                 const rid = (result as any)?.meta?.routine_id;
-                navigation.navigate('RoutineDetail', {
+                const parentNav1: any = (navigation as any).getParent?.();
+                const parentNav2: any = parentNav1?.getParent?.();
+                const rootNav: any = parentNav2 || parentNav1 || navigation;
+                rootNav.navigate('RoutineDetail', {
                   routineId: rid,
                   sectionIndex: idx,
                   title: s.title,

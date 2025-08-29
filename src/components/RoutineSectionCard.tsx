@@ -16,6 +16,7 @@ export type RoutineSectionCardProps = {
 function RoutineSectionCardComponent({ title, description, exercises, defaultExpanded = false, onPress }: RoutineSectionCardProps) {
   const theme = useTheme();
   const [expanded, setExpanded] = useState<boolean>(defaultExpanded);
+  const exerciseCount = exercises?.length ?? 0;
 
   return (
     <View style={[styles.card, { backgroundColor: theme.colors.card, borderColor: '#333' }]}> 
@@ -28,7 +29,14 @@ function RoutineSectionCardComponent({ title, description, exercises, defaultExp
             </Text>
           )}
         </View>
-        <Ionicons name={onPress ? 'chevron-forward' : (expanded ? 'chevron-up' : 'chevron-down')} size={18} color={theme.colors.text} />
+        <View style={styles.rightWrap}>
+          {!!exerciseCount && (
+            <View style={[styles.countPill, { borderColor: theme.colors.accent + '80' }]}> 
+              <Text style={[styles.countTxt, { color: theme.colors.accent }]}>{exerciseCount} {exerciseCount === 1 ? 'ej.' : 'ejercicios'}</Text>
+            </View>
+          )}
+          <Ionicons name={onPress ? 'chevron-forward' : (expanded ? 'chevron-up' : 'chevron-down')} size={18} color={theme.colors.text} />
+        </View>
       </TouchableOpacity>
 
       {!onPress && expanded && (
@@ -57,6 +65,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  rightWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTextWrap: {
     flex: 1,
   },
@@ -76,6 +85,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginBottom: 4,
   },
+  countPill: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
+  countTxt: { fontSize: 12, fontWeight: '700' },
 });
 
 

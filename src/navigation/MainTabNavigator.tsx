@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
 import HomeScreen from '../screens/HomeScreen/HomeScreen';
 import AIRoutineScreen from '../screens/AIRoutineScreen/AIRoutineScreen';
+import RoutineDetailScreen from '../screens/RoutineDetailScreen/RoutineDetailScreen';
 import CommunityScreen from '../screens/CommunityScreen/CommunityScreen';
 import ProfileScreen from '../screens/ProfileScreen/ProfileScreen';
 import ObjectivesScreen from '../screens/GoalsScreen/ObjectivesScreen';
@@ -15,6 +16,7 @@ import MyRoutinesScreen from '../screens/MyRoutinesScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
+const AINav = createStackNavigator();
 const { width } = Dimensions.get('window');
 
 const AnimatedTabIcon = ({
@@ -193,7 +195,7 @@ function TabNavigator() {
         />
         <Tab.Screen
           name="AI Routine"
-          component={AIRoutineScreen}
+          component={AIRoutineStack}
           options={{ tabBarLabel: 'IA Rutina' }}
         />
         <Tab.Screen
@@ -215,23 +217,18 @@ export default function MainTabNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="TabsRoot" component={TabNavigator} />
-      <Stack.Screen
-        name="CreateRoutine"
-        component={CreateRoutineScreen}
-        options={{
-          presentation: 'modal',
-          gestureEnabled: true,
-        }}
-      />
-      <Stack.Screen
-        name="MyRoutines"
-        component={MyRoutinesScreen}
-        options={{
-          presentation: 'card',
-          gestureEnabled: true,
-        }}
-      />
+      <Stack.Screen name="CreateRoutine" component={CreateRoutineScreen} options={{ presentation: 'modal', gestureEnabled: true }} />
+      <Stack.Screen name="MyRoutines" component={MyRoutinesScreen} options={{ presentation: 'card', gestureEnabled: true }} />
+      <Stack.Screen name="RoutineDetail" component={RoutineDetailScreen} options={{ presentation: 'card', gestureEnabled: true }} />
     </Stack.Navigator>
+  );
+}
+
+function AIRoutineStack() {
+  return (
+    <AINav.Navigator screenOptions={{ headerShown: false }}>
+      <AINav.Screen name="AIRoutineRoot" component={AIRoutineScreen} />
+    </AINav.Navigator>
   );
 }
 
