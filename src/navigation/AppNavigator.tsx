@@ -3,7 +3,8 @@ import SplashScreen from '../screens/SplashScreen/SplashScreen';
 import MainTabNavigator from './MainTabNavigator';
 import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
-import InitialSurveyScreen from '../screens/OnboardingScreen/InitialSurveyScreen';
+import GenderQuestionScreen from '../screens/OnboardingScreen/GenderQuestionScreen';
+import ObjectivesQuestionScreen from '../screens/OnboardingScreen/ObjectivesQuestionScreen';
 import { useUser } from '../context/UserContext';
 
 const Stack = createStackNavigator();
@@ -22,7 +23,10 @@ export default function AppNavigator() {
       ) : user?.hasCompletedSurvey ? (
         <Stack.Screen name="MainTabs" component={MainTabNavigator} />
       ) : (
-        <Stack.Screen name="InitialSurvey" component={InitialSurveyScreen} options={{ gestureEnabled: false }} />
+        <>
+          <Stack.Screen name="GenderQuestion" component={GenderQuestionScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="ObjectivesQuestion" component={ObjectivesQuestionScreen} options={{ gestureEnabled: false }} />
+        </>
       )}
     </Stack.Navigator>
   );
