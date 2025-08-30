@@ -124,6 +124,21 @@ export default function ObjectivesQuestionScreen() {
   const currentCategory = MUSCLE_CATEGORIES.find(cat => cat.id === activeCategory);
   const currentMuscles = currentCategory ? currentCategory.muscles : [];
 
+  const onNext = async () => {
+    try {
+      setLoading(true);
+      const { data: sess } = await supabase.auth.getSession();
+      const userId = sess.session?.user?.id;
+      if (!userId) throw new Error('Sin sesión');
+      await supabase.from('objectives').upsert({ user_id: userId, muscle_groups: selected });
+      (navigation as any).navigate('CurrentPhysiqueQuestion');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'No se pudo guardar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: '#000' }]}>
 
@@ -281,6 +296,7 @@ export default function ObjectivesQuestionScreen() {
       >
         <TouchableOpacity
           style={[styles.nextBtn, { opacity: loading ? 0.6 : 1 }]}
+          onPress={onNext}
           disabled={loading}
         >
           <LinearGradient
@@ -290,7 +306,7 @@ export default function ObjectivesQuestionScreen() {
             end={{ x: 1, y: 0 }}
           >
             <Text style={[styles.nextTxt, { color: theme.colors.background }]}>
-              {loading ? 'Guardando...' : 'Finalizar'}
+              {loading ? 'Guardando...' : 'Siguiente'}
             </Text>
           </LinearGradient>
         </TouchableOpacity>

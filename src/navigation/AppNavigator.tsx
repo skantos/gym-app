@@ -5,6 +5,7 @@ import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
 import GenderQuestionScreen from '../screens/OnboardingScreen/GenderQuestionScreen';
 import ObjectivesQuestionScreen from '../screens/OnboardingScreen/ObjectivesQuestionScreen';
+import CurrentPhysiqueQuestionScreen from '../screens/OnboardingScreen/CurrentPhysiqueQuestionScreen';
 import { useUser } from '../context/UserContext';
 
 const Stack = createStackNavigator();
@@ -26,6 +27,7 @@ export default function AppNavigator() {
         <>
           <Stack.Screen name="GenderQuestion" component={GenderQuestionScreen} options={{ gestureEnabled: false }} />
           <Stack.Screen name="ObjectivesQuestion" component={ObjectivesQuestionScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="CurrentPhysiqueQuestion" component={CurrentPhysiqueQuestionScreen} options={{ gestureEnabled: false }} />
         </>
       )}
     </Stack.Navigator>
