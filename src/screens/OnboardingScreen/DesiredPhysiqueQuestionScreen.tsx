@@ -51,7 +51,14 @@ export default function DesiredPhysiqueQuestionScreen() {
       const { data: sess } = await supabase.auth.getSession();
       const userId = sess.session?.user?.id;
       if (!userId) throw new Error('Sin sesión');
-      await supabase.from('initial_survey').upsert({ user_id: userId, aesthetic_goal: value });
+      await supabase
+        .from('initial_survey')
+        .upsert(
+          { user_id: userId, aesthetic_goal: value, updated_at: new Date().toISOString() },
+          { onConflict: 'user_id' }
+        )
+        .select('user_id, aesthetic_goal')
+        .single();
       navigation.navigate('DaysPerWeekQuestion');
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'No se pudo guardar');

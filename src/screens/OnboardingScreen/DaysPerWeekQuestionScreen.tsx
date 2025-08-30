@@ -57,7 +57,7 @@ export default function DaysPerWeekQuestionScreen() {
         days_per_week: selected.length, 
         training_days: selected 
       });
-      navigation.goBack();
+      navigation.navigate('EquipmentTypeQuestion');
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'No se pudo guardar');
     } finally {
