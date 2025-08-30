@@ -80,31 +80,6 @@ export default function WeightHeightQuestionScreen() {
     }
   };
 
-  const onNext = async () => {
-    try {
-      if (weight <= 0) throw new Error('Peso inválido');
-      if (heightCm <= 0) throw new Error('Altura inválida');
-      
-      setLoading(true);
-      const { data: sess } = await supabase.auth.getSession();
-      const userId = sess.session?.user?.id;
-      if (!userId) throw new Error('Sin sesión');
-      
-      await supabase.from('initial_survey').upsert({ 
-        user_id: userId, 
-        weight_kg: weight, 
-        height_cm: heightCm 
-      });
-      
-      Alert.alert('¡Perfecto!', 'Peso y altura guardados correctamente.');
-      navigation.goBack();
-    } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo guardar');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const renderSelector = (type: 'weight' | 'height', data: any[], value: number) => {
     const unit = type === 'weight' ? 'kg' : 'cm';
     const label = type === 'weight' ? 'Peso' : 'Altura';
@@ -121,14 +96,7 @@ export default function WeightHeightQuestionScreen() {
           {label}
         </Text>
         
-        <View style={styles.selectorValueContainer}>
-          <Text style={[styles.selectorValue, { color: theme.colors.accent }]}>
-            {displayValue}
-          </Text>
-          <Text style={[styles.selectorUnit, { color: theme.colors.accent + '80' }]}>
-            {unit}
-          </Text>
-        </View>
+        {/* Valor destacado removido: el valor seleccionado se muestra centrado en el carril */}
 
         <View style={styles.selectorWheel}>
           {/* Línea indicadora central */}
@@ -145,7 +113,6 @@ export default function WeightHeightQuestionScreen() {
             decelerationRate="fast"
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            contentContainerStyle={styles.scrollContent}
           >
             {/* Items de relleno para centrado */}
             {Array.from({ length: TOP_SPACER_COUNT }).map((_, index) => (
@@ -245,7 +212,6 @@ export default function WeightHeightQuestionScreen() {
           style={[styles.nextBtn, { 
             opacity: loading ? 0.6 : 1,
           }]} 
-          onPress={onNext} 
           disabled={loading}
         >
           <LinearGradient
@@ -313,15 +279,15 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   selectorsSection: {
-    flex: 3,
-    gap: '6%',
-    marginBottom: '5%',
+    flex: 2.5,
+    gap: '4%',
+    marginBottom: 0,
   },
   selectorContainer: {
     borderRadius: 20,
     borderWidth: 1,
     padding: '5%',
-    height: '45%', // 45% del espacio disponible
+    height: '40%', 
     position: 'relative',
     overflow: 'hidden',
   },
@@ -347,11 +313,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   selectorWheel: {
-    height: '60%', // 60% del contenedor
+    height: '70%',
     position: 'relative',
-  },
-  scrollContent: {
-    paddingVertical: ITEM_HEIGHT * 2, // Padding para centrar
   },
   selectorItem: {
     alignItems: 'center',
@@ -365,19 +328,21 @@ const styles = StyleSheet.create({
   },
   selectorIndicator: {
     position: 'absolute',
-    left: '15%',
-    right: '15%',
-    height: 1,
+    left: '8%',
+    right: '8%',
+    height: 2,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     zIndex: 1,
   },
   bmiSection: {
     alignItems: 'center',
+    marginTop: '2%',
+    paddingTop: '2%',
     marginBottom: '6%',
     padding: '5%',
     borderRadius: 20,
     borderWidth: 1,
-  },
+  },  
   bmiLabel: {
     fontSize: 14,
     fontWeight: '600',
@@ -393,7 +358,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   buttonSection: {
-    paddingBottom: '6%',
+    paddingBottom: '20%',
     alignItems: 'center',
   },
   nextBtn: {
