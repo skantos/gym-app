@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { upsertRoutineExercises } from '../../services/routines';
 import { fetchMuscleGroupsForExerciseNames } from '../../services/exercises';
 
-type Ex = { name: string; sets: number; reps: string | number; rest_seconds: number; notes?: string };
+type Ex = { name: string; sets: number; reps: string | number; rest_seconds: number; notes?: string; muscle_group?: string };
 
 export default function RoutineDetailScreen() {
   const theme = useTheme();
@@ -72,13 +72,13 @@ export default function RoutineDetailScreen() {
               <Text style={[styles.itemMeta, { color: theme.colors.text + '99' }]}>
                 {ex.sets}x{ex.reps} · descanso {ex.rest_seconds}s
               </Text>
-              {!!nameToGroup[ex.name] && (
+              {(() => { const mg = ex.muscle_group ?? nameToGroup[ex.name]; return mg ? (
                 <View style={styles.chipsRow}>
                   <View style={[styles.chip, { borderColor: theme.colors.accent + '80' }]}> 
-                    <Text style={[styles.chipTxt, { color: theme.colors.accent }]}>{nameToGroup[ex.name]}</Text>
+                    <Text style={[styles.chipTxt, { color: theme.colors.accent }]}>{mg}</Text>
                   </View>
                 </View>
-              )}
+              ) : null })()}
             </View>
             <TouchableOpacity onPress={() => onRemove(idx)} style={styles.removeBtn}>
               <Ionicons name="trash" size={18} color="#ff6b6b" />

@@ -23,7 +23,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
       secondaryAccent: "#00D4FF",
       text: "#FFFFFF",
       card: "#1A1A1A",
-      borderNeon: "rgba(0, 212, 255, 0.5)",
+      borderNeon: "rgba(209, 229, 233, 0.5)",
     },
   };
 

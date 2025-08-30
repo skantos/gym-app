@@ -5,6 +5,8 @@ import { supabase } from '../services/supabase';
 interface User {
 	id: string;
 	name: string;
+	firstName?: string;
+	lastName?: string;
 	email: string;
 	avatar?: string;
 	gender?: 'male' | 'female';
@@ -16,7 +18,7 @@ interface UserContextType {
 	user: User | null;
 	isAuthenticated: boolean;
 	loginWithEmail: (email: string, password: string) => Promise<void>;
-	registerWithEmail: (name: string, email: string, password: string, gender: 'male' | 'female') => Promise<void>;
+	registerWithEmail: (firstName: string, lastName: string, email: string, password: string) => Promise<void>;
 	logout: () => Promise<void>;
 	markSurveyCompleted: () => void;
   forceLoginOnStart: boolean;
@@ -42,27 +44,57 @@ export function UserProvider({ children }: UserProviderProps) {
 			} catch { /* ignore */ }
 		})();
 
+		// Hidratar sesión actual y perfil al arranque (sin depender del evento)
+		(async () => {
+			try {
+				const { data: sess } = await supabase.auth.getSession();
+				const authUser = sess.session?.user;
+				if (authUser?.id) {
+					try {
+						const { data: profile } = await supabase
+							.from('users')
+							.select('*')
+							.eq('id', authUser.id)
+							.single();
+						setUser({
+							id: authUser.id,
+							name: profile?.name ?? (([profile?.first_name, profile?.last_name].filter(Boolean).join(' ')) || (authUser.email?.split('@')[0] ?? 'Usuario')),
+							firstName: profile?.first_name ?? undefined,
+							lastName: profile?.last_name ?? undefined,
+							email: authUser.email ?? '',
+							avatar: profile?.avatar ?? undefined,
+							gender: profile?.gender === 'female' ? 'female' : profile?.gender === 'male' ? 'male' : undefined,
+							hasCompletedSurvey: !!profile?.has_completed_survey,
+							surveyCompletedAt: profile?.survey_completed_at,
+						});
+					} catch {}
+				}
+			} finally {
+				// no bloquear arranque si falla
+			}
+		})();
+
 		const { data: subscription } = supabase.auth.onAuthStateChange(async (_event, session) => {
 			const authUser = session?.user;
 			if (authUser?.id) {
 				try {
 					let { data: profile } = await supabase
-						.from('profiles')
+						.from('users')
 						.select('*')
 						.eq('id', authUser.id)
 						.single();
 
-					// Si no existe el perfil (p.ej., trigger no corrió o email confirmado después), crearlo con metadatos
+					// Si no existe el perfil, crearlo con metadatos
 					if (!profile) {
 						const meta = authUser.user_metadata || {};
-						await supabase.from('profiles').upsert({
+						await supabase.from('users').upsert({
 							id: authUser.id,
 							email: authUser.email ?? null,
-							name: meta.name ?? (authUser.email ? authUser.email.split('@')[0] : null),
-							gender: meta.gender ?? null,
+							first_name: meta.first_name ?? null,
+							last_name: meta.last_name ?? null,
 						});
 						const res = await supabase
-							.from('profiles')
+							.from('users')
 							.select('*')
 							.eq('id', authUser.id)
 							.single();
@@ -70,7 +102,7 @@ export function UserProvider({ children }: UserProviderProps) {
 					}
 					setUser({
 						id: authUser.id,
-						name: profile?.name ?? authUser.email?.split('@')[0] ?? 'Usuario',
+						name: profile?.name ?? (([profile?.first_name, profile?.last_name].filter(Boolean).join(' ')) || (authUser.email?.split('@')[0] ?? 'Usuario')),
 						email: authUser.email ?? '',
 						avatar: profile?.avatar ?? undefined,
 						gender: profile?.gender === 'female' ? 'female' : profile?.gender === 'male' ? 'male' : undefined,
@@ -102,12 +134,12 @@ export function UserProvider({ children }: UserProviderProps) {
     try { await AsyncStorage.setItem('forceLoginOnStart', 'false'); } catch {}
 	};
 
-	const registerWithEmail = async (name: string, email: string, password: string, gender: 'male' | 'female') => {
+	const registerWithEmail = async (firstName: string, lastName: string, email: string, password: string) => {
 		const { data, error } = await supabase.auth.signUp({
 			email,
 			password,
 			options: {
-				data: { name, gender },
+				data: { first_name: firstName, last_name: lastName },
 			},
 		});
 		if (error) throw error;
@@ -121,11 +153,11 @@ export function UserProvider({ children }: UserProviderProps) {
 
 		// Crear/actualizar perfil inmediatamente como respaldo al trigger
 		if (sessionUserId) {
-			await supabase.from('profiles').upsert({
+			await supabase.from('users').upsert({
 				id: sessionUserId,
 				email,
-				name: name || email.split('@')[0],
-				gender,
+				first_name: firstName,
+				last_name: lastName,
 			});
 		}
     // Ya no forzar login al próximo arranque

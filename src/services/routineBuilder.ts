@@ -72,7 +72,25 @@ export async function buildRoutineFromDB(params: {
     ];
     for (let i = 0; i < numDays; i++) {
       const t = templates[i];
-      const picks = t.focus.flatMap((m) => getFor(m, 1));
+      // Dar prioridad a objetivos del usuario: 2 ejercicios por grupo objetivo, 1 por el resto
+      const picksRaw: Exercise[] = [];
+      for (const m of t.focus) {
+        const isObjective = params.muscleGroups.includes(m);
+        const count = isObjective ? 2 : 1;
+        picksRaw.push(...getFor(m, count));
+      }
+      // Asegurar 5-6 ejercicios por sesión
+      let picks = picksRaw;
+      if (picks.length < 5) {
+        // completar con grupos objetivo globales
+        for (const m of params.muscleGroups) {
+          if (picks.length >= 5) break;
+          picks.push(...getFor(m, 1));
+        }
+      }
+      if (picks.length > 6) {
+        picks = picks.slice(0, 6);
+      }
       const exs = picks.map((e) => ({ name: e.name, sets: 3, reps: rep, rest_seconds: rest, muscle_group: e.muscle_group || undefined }));
       days.push({ day: t.day, muscleFocus: t.focus, exercises: exs });
     }
@@ -81,10 +99,10 @@ export async function buildRoutineFromDB(params: {
   if (split === 'upper_lower') {
     const upper1 = ['chest','upper-back','deltoids','biceps','triceps'];
     const lower1 = ['quadriceps','hamstring','gluteal','calves','abs'];
-    const d1 = upper1.flatMap((m) => getFor(m, m === 'chest' || m === 'upper-back' ? 2 : 1));
-    const d2 = lower1.flatMap((m) => getFor(m, m === 'quadriceps' ? 2 : 1));
-    const d3 = upper1.flatMap((m) => getFor(m, 1));
-    const d4 = lower1.flatMap((m) => getFor(m, 1));
+    const d1 = upper1.flatMap((m) => getFor(m, params.muscleGroups.includes(m) ? 2 : (m === 'chest' || m === 'upper-back' ? 2 : 1)));
+    const d2 = lower1.flatMap((m) => getFor(m, params.muscleGroups.includes(m) ? 2 : (m === 'quadriceps' ? 2 : 1)));
+    const d3 = upper1.flatMap((m) => getFor(m, params.muscleGroups.includes(m) ? 2 : 1));
+    const d4 = lower1.flatMap((m) => getFor(m, params.muscleGroups.includes(m) ? 2 : 1));
     days.push(
       { day: 'Upper A', muscleFocus: upper1, exercises: d1.map((e) => ({ name: e.name, sets: 3, reps: rep, rest_seconds: rest, muscle_group: e.muscle_group || undefined })) },
       { day: 'Lower A', muscleFocus: lower1, exercises: d2.map((e) => ({ name: e.name, sets: 3, reps: rep, rest_seconds: rest, muscle_group: e.muscle_group || undefined })) },
@@ -97,12 +115,12 @@ export async function buildRoutineFromDB(params: {
     const push = ['chest','deltoids','triceps'];
     const pull = ['upper-back','biceps','forearm'];
     const legs = ['quadriceps','hamstring','gluteal','calves','abs'];
-    const d1 = push.flatMap((m) => getFor(m, m === 'chest' ? 2 : 1));
-    const d2 = pull.flatMap((m) => getFor(m, m === 'upper-back' ? 2 : 1));
-    const d3 = legs.flatMap((m) => getFor(m, m === 'quadriceps' ? 2 : 1));
-    const d4 = push.flatMap((m) => getFor(m, 1));
-    const d5 = pull.flatMap((m) => getFor(m, 1));
-    const d6 = legs.flatMap((m) => getFor(m, 1));
+    const d1 = push.flatMap((m) => getFor(m, params.muscleGroups.includes(m) ? 2 : (m === 'chest' ? 2 : 1)));
+    const d2 = pull.flatMap((m) => getFor(m, params.muscleGroups.includes(m) ? 2 : (m === 'upper-back' ? 2 : 1)));
+    const d3 = legs.flatMap((m) => getFor(m, params.muscleGroups.includes(m) ? 2 : (m === 'quadriceps' ? 2 : 1)));
+    const d4 = push.flatMap((m) => getFor(m, params.muscleGroups.includes(m) ? 2 : 1));
+    const d5 = pull.flatMap((m) => getFor(m, params.muscleGroups.includes(m) ? 2 : 1));
+    const d6 = legs.flatMap((m) => getFor(m, params.muscleGroups.includes(m) ? 2 : 1));
     days.push(
       { day: 'Push A', muscleFocus: push, exercises: d1.map((e) => ({ name: e.name, sets: 3, reps: rep, rest_seconds: rest, muscle_group: e.muscle_group || undefined })) },
       { day: 'Pull A', muscleFocus: pull, exercises: d2.map((e) => ({ name: e.name, sets: 3, reps: rep, rest_seconds: rest, muscle_group: e.muscle_group || undefined })) },

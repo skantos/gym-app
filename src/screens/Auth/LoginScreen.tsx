@@ -8,7 +8,6 @@ import { useUser } from '../../context/UserContext';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../services/supabase';
 // import BackgroundTheme from '../../components/BackgroundTheme';
-// duplicates removed
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -176,16 +175,6 @@ export default function LoginScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </Animated.View>
-
-      {/* Bottom Section */}
-      <Animated.View 
-        entering={FadeInUp.delay(600).springify()} 
-        style={styles.bottomSection}
-      >
-        <Text style={[styles.bottomText, { color: '#9CA3AF' }]}> 
-          Al continuar, aceptas nuestros términos y condiciones
-        </Text>
       </Animated.View>
     </View>
   );

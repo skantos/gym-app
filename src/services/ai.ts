@@ -12,7 +12,9 @@ export type GeneratedRoutine = {
   description?: string;
   days?: Array<{
     day: string;
-    exercises: Array<{ name: string; sets: number; reps: string | number; rest_seconds: number }>;
+    section_title?: string;  
+    section_reason?: string;  
+    exercises: Array<{ name: string; sets: number; reps: string | number; rest_seconds: number; notes?: string; muscle_group?: string }>; // NUEVO
   }>;
   meta?: { saved?: { routine_id: string } | null; routine_id?: string };
 };
@@ -111,13 +113,13 @@ export async function fetchLatestGeneratedRoutine(): Promise<GeneratedRoutine | 
 
   const { data: exercises, error: eErr } = await supabase
     .from('routine_exercises')
-    .select('day_index, name, sets, reps, rest_seconds, notes, order_index')
+    .select('day_index, name, sets, reps, rest_seconds, notes, muscle_group, order_index')
     .eq('routine_id', routine.id)
     .order('day_index', { ascending: true })
     .order('order_index', { ascending: true });
   if (eErr || !exercises) return null;
 
-  const byDay: Record<number, { name: string; sets: number; reps: string | number; rest_seconds: number; notes?: string }[]> = {};
+  const byDay: Record<number, { name: string; sets: number; reps: string | number; rest_seconds: number; notes?: string; muscle_group?: string }[]> = {};
   for (const ex of exercises as any[]) {
     const d = Number(ex.day_index) || 0;
     if (!byDay[d]) byDay[d] = [];
@@ -127,6 +129,7 @@ export async function fetchLatestGeneratedRoutine(): Promise<GeneratedRoutine | 
       reps: typeof ex.reps === 'number' ? ex.reps : String(ex.reps),
       rest_seconds: Number(ex.rest_seconds),
       notes: ex.notes ?? undefined,
+      muscle_group: ex.muscle_group ?? undefined,
     });
   }
 

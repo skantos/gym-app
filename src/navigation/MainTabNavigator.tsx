@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { View, Text, StyleSheet, Animated, Dimensions } from 'react-native';
+import { View, Animated, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../context/ThemeContext';
@@ -13,11 +13,12 @@ import ProfileScreen from '../screens/ProfileScreen/ProfileScreen';
 import ObjectivesScreen from '../screens/GoalsScreen/ObjectivesScreen';
 import CreateRoutineScreen from '../screens/CreateRoutineScreen';
 import MyRoutinesScreen from '../screens/MyRoutinesScreen';
+import styles from './MainTabNavigator.styles';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 const AINav = createStackNavigator();
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const AnimatedTabIcon = ({
   focused,
@@ -98,7 +99,7 @@ const AnimatedTabIcon = ({
             styles.glowBackground,
             {
               opacity: glowValue,
-              backgroundColor: theme.colors.accent + '30',
+              backgroundColor: theme.colors.accent + '40',
             },
           ]}
         />
@@ -149,34 +150,39 @@ function TabNavigator() {
           headerShown: false,
           tabBarStyle: {
             position: 'absolute',
-            bottom: 40,
-            left: 20,
-            right: 20,
-            height: 75,
+            bottom: height * 0.02,
+            left: width * 0.05,
+            right: width * 0.05,
+            height: 70,
             backgroundColor: 'transparent',
-            borderRadius: 25,
+            borderRadius: 20,
             borderTopWidth: 0,
             elevation: 0,
             shadowOpacity: 0,
-            paddingHorizontal: 20,
-            paddingBottom: 15,
-            paddingTop: 15,
+            paddingHorizontal: width * 0.03,
+            paddingBottom: 10,
+            paddingTop: 10,
+            borderColor: theme.colors.borderNeon,
+            borderWidth: 1,
           },
           tabBarBackground: () => (
             <View
               style={[
                 styles.tabBarBackground,
-                { backgroundColor: theme.colors.card + '40' },
+                { 
+                  backgroundColor: theme.colors.card + 'CC',
+                  borderColor: theme.colors.borderNeon,
+                },
               ]}
             />
           ),
           tabBarActiveTintColor: theme.colors.accent,
-          tabBarInactiveTintColor: theme.colors.text,
+          tabBarInactiveTintColor: theme.colors.text + '99',
           tabBarLabelStyle: {
             fontSize: 10,
             fontWeight: '700',
             letterSpacing: 0.5,
-            marginTop: 8,
+            marginTop: 5,
           },
           tabBarIcon: ({ focused, color, size }) => (
             <AnimatedTabIcon focused={focused} route={route} theme={theme} />
@@ -196,7 +202,7 @@ function TabNavigator() {
         <Tab.Screen
           name="AI Routine"
           component={AIRoutineStack}
-          options={{ tabBarLabel: 'IA Rutina' }}
+          options={{ tabBarLabel: 'IA Rufins' }}
         />
         <Tab.Screen
           name="Community"
@@ -231,50 +237,3 @@ function AIRoutineStack() {
     </AINav.Navigator>
   );
 }
-
-const styles = StyleSheet.create({
-  iconWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 60,
-    height: 60,
-    position: 'relative',
-  },
-  glowBackground: {
-    position: 'absolute',
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    top: 5,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-  },
-  separatorContainer: {
-    position: 'absolute',
-    bottom: 115, // Ajusta según la posición de tu TabBar
-    left: 20,
-    right: 20,
-    height: 4,
-    zIndex: 1,
-    overflow: 'hidden',
-  },
-  gradientLine: {
-    width: '100%',
-    height: '100%',
-  },
-  tabBarBackground: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '100%',
-    borderRadius: 25,
-    backgroundColor: 'rgba(0, 0, 0, 0.05)',
-  },
-});

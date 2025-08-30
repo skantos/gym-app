@@ -157,12 +157,11 @@ export default function AIRoutineScreen() {
   // Mapeo: de días a secciones con títulos tipo "Pecho - Tríceps", "Espalda - Bíceps", etc.
   const toSections = () => {
     const days = result?.days || [];
-    return days.map((d, i) => {
-      // título inferido si viene un patrón común, si no usamos el 'day'
-      const title = d.day || `Sección ${i + 1}`;
-      const description = buildGenericReason();
-      return { title, description, exercises: d.exercises };
-    });
+    return days.map((d, i) => ({
+      title: d.section_title || d.day || `Sección ${i + 1}`,
+      description: d.section_reason || buildGenericReason(),
+      exercises: d.exercises,
+    }));
   };
 
   const enrichSections = async () => {
@@ -183,7 +182,11 @@ export default function AIRoutineScreen() {
       } catch {}
 
       return sections.map((s) => {
-        const groupsList = s.exercises.map((e) => nameToGroup[e.name]).filter(Boolean) as string[];
+        const groupsList = s.exercises.map((e: any) => {
+          const fromBackend = e.muscle_group as string | undefined;
+          const fromDb = nameToGroup[e.name] as string | undefined;
+          return fromBackend || fromDb || inferGroupFromName(e.name);
+        }).filter(Boolean) as string[];
         const groupsSet = Array.from(new Set(groupsList));
         const focus = focusTitleFromGroups(groupsList) || inferTitleFromGroups(groupsSet) || s.title;
         const desc = buildDescriptionFromGroups(groupsSet, surveyInfo || undefined, objGroups, focus) || s.description;
@@ -260,6 +263,38 @@ export default function AIRoutineScreen() {
   };
 
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  // Fallback local: inferir grupo desde palabras clave en español/inglés comunes
+  const inferGroupFromName = (raw: string): string | undefined => {
+    const n = normalizeName(raw);
+    const has = (keys: string[]) => keys.some((k) => n.includes(k));
+    // Pecho
+    if (has(['press banca','press de banca','press inclinado','press declinado','aperturas','cruces polea','peck deck','chest'])) return 'chest';
+    // Espalda alta / dorsales
+    if (has(['remo','jalon','dominadas','pull ups','face pull','row','lat pulldown','trapecio','dorsal'])) return 'upper-back';
+    if (has(['lats'])) return 'lats';
+    // Hombros
+    if (has(['press militar','elevaciones laterales','elevaciones frontales','pajaro','deltoides','shoulder'])) return 'deltoids';
+    // Bíceps
+    if (has(['curl biceps','curl de biceps','curl martillo','biceps','barbell curl','preacher'])) return 'biceps';
+    // Tríceps
+    if (has(['fondos','dips','triceps','extensiones triceps','extension de triceps','jalon triceps'])) return 'triceps';
+    // Piernas – cuádriceps/isos/glúteos/pantorrillas
+    if (has(['sentadilla','prensa','zancadas','lunges','cuadriceps','front squat','split squat'])) return 'quadriceps';
+    if (has(['peso muerto rumano','curl de piernas','femoral','isquios','leg curl','romanian'])) return 'hamstring';
+    if (has(['gluteo','hip thrust','puente de cadera','glute','patada de gluteo'])) return 'gluteal';
+    if (has(['elevacion de talones','gemelos','pantorrillas','calf'])) return 'calves';
+    // Core
+    if (has(['abdominal','crunch','planchas','plank','oblicuos','core'])) return 'abs';
+    return undefined;
+  };
+
+  const normalizeName = (s: string) => s
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   // Mantener títulos/descripcion estables
   useEffect(() => {
