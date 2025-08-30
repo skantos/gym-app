@@ -9,7 +9,6 @@ import { useNavigation } from '@react-navigation/native';
 import Body from 'react-native-body-highlighter';
 import type { ExtendedBodyPart, Slug } from 'react-native-body-highlighter';
 
-
 const { width, height } = Dimensions.get('window');
 
 // Definición de categorías y músculos
@@ -79,6 +78,13 @@ export default function ObjectivesQuestionScreen() {
   const [loading, setLoading] = useState(false);
   const [side, setSide] = useState<'front' | 'back'>('front');
   const [gender, setGender] = useState<'male' | 'female'>('male');
+  const [screenHeight, setScreenHeight] = useState(height);
+
+  // Detectar cambios en las dimensiones de la pantalla
+  const onLayout = (event: any) => {
+    const { height: newHeight } = event.nativeEvent.layout;
+    setScreenHeight(newHeight);
+  };
 
   useEffect(() => {
     (async () => {
@@ -139,36 +145,73 @@ export default function ObjectivesQuestionScreen() {
     }
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: '#000' }]}>
+  // Calcular tamaños dinámicos basados en la altura de la pantalla
+  const getDynamicSizes = () => {
+    if (screenHeight < 700) {
+      // Pantallas pequeñas (menos de 700px de altura)
+      return {
+        modelHeight: 180,
+        modelScale: 0.9,
+        muscleButtonMinWidth: 100,
+        muscleButtonMaxWidth: 120,
+        headerMarginTop: screenHeight * 0.03,
+        muscleSectionMaxHeight: 60,
+      };
+    } else if (screenHeight < 800) {
+      // Pantallas medianas (700px - 800px)
+      return {
+        modelHeight: 220,
+        modelScale: 1.0,
+        muscleButtonMinWidth: 110,
+        muscleButtonMaxWidth: 130,
+        headerMarginTop: screenHeight * 0.04,
+        muscleSectionMaxHeight: 70,
+      };
+    } else {
+      // Pantallas grandes (más de 800px)
+      return {
+        modelHeight: 250,
+        modelScale: 1.1,
+        muscleButtonMinWidth: 120,
+        muscleButtonMaxWidth: 140,
+        headerMarginTop: screenHeight * 0.05,
+        muscleSectionMaxHeight: 80,
+      };
+    }
+  };
 
-      {/* Header Section - ARRIBA */}
+  const dynamicSizes = getDynamicSizes();
+
+  return (
+    <View style={[styles.container, { backgroundColor: '#000' }]} onLayout={onLayout}>
+
+      {/* Header Section - Optimizado para diferentes tamaños */}
       <Animated.View
         entering={FadeInUp.delay(200).springify()}
-        style={styles.headerSection}
+        style={[styles.headerSection, { marginTop: dynamicSizes.headerMarginTop }]}
       >
         <View style={styles.headerRow}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
             style={[styles.backButton, { borderColor: theme.colors.borderNeon }]}
           >
-            <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
+            <Ionicons name="arrow-back" size={20} color={theme.colors.text} />
           </TouchableOpacity>
         </View>
 
-        <Text style={[styles.title, { color: theme.colors.accent }]}>
+        <Text style={[styles.title, { color: theme.colors.accent, fontSize: screenHeight < 700 ? 24 : 28 }]}>
           Selecciona tus objetivos
         </Text>
-        <Text style={[styles.subtitle, { color: '#9CA3AF' }]}>
+        <Text style={[styles.subtitle, { color: '#9CA3AF', fontSize: screenHeight < 700 ? 14 : 16 }]}>
           Elige los grupos musculares que quieres priorizar
         </Text>
       </Animated.View>
 
+      {/* Categorías - Scroll horizontal compacto */}
       <Animated.View
         entering={FadeInDown.delay(400).springify()}
         style={styles.categorySection}
       >
-
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -185,19 +228,25 @@ export default function ObjectivesQuestionScreen() {
                     : 'rgba(255, 255, 255, 0.05)',
                   borderColor: activeCategory === category.id
                     ? theme.colors.accent
-                    : theme.colors.borderNeon
+                    : theme.colors.borderNeon,
+                  paddingVertical: screenHeight < 700 ? 8 : 10,
+                  paddingHorizontal: screenHeight < 700 ? 12 : 14,
                 }
               ]}
               onPress={() => toggleCategory(category.id)}
             >
               <Ionicons
                 name={category.icon as any}
-                size={20}
+                size={screenHeight < 700 ? 16 : 18}
                 color={activeCategory === category.id ? theme.colors.accent : theme.colors.text}
               />
               <Text style={[
                 styles.categoryText,
-                { color: activeCategory === category.id ? theme.colors.accent : theme.colors.text }
+                { 
+                  color: activeCategory === category.id ? theme.colors.accent : theme.colors.text,
+                  fontSize: screenHeight < 700 ? 12 : 13,
+                  marginLeft: screenHeight < 700 ? 4 : 6,
+                }
               ]}>
                 {category.name}
               </Text>
@@ -206,27 +255,39 @@ export default function ObjectivesQuestionScreen() {
         </ScrollView>
       </Animated.View>
 
-      {/* Body Model */}
+      {/* Body Model - Tamaño dinámico */}
       <Animated.View
         entering={FadeInDown.delay(300).springify()}
         style={styles.modelSection}
       >
         <View style={[styles.modelCard]}>
           <View style={styles.modelHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.text }]}>Modelo corporal</Text>
+            <Text style={[styles.sectionTitle, { 
+              color: theme.colors.text,
+              fontSize: screenHeight < 700 ? 15 : 16 
+            }]}>
+              Modelo corporal
+            </Text>
             <View style={styles.modelActions}>
-              <TouchableOpacity style={[styles.iconBtn, { borderColor: theme.colors.card }]} onPress={() => setSide((p) => (p === 'front' ? 'back' : 'front'))}>
-                <Ionicons name="refresh-outline" size={18} color={theme.colors.text} />
+              <TouchableOpacity 
+                style={[styles.iconBtn, { 
+                  borderColor: theme.colors.card,
+                  width: screenHeight < 700 ? 28 : 32,
+                  height: screenHeight < 700 ? 28 : 32,
+                }]} 
+                onPress={() => setSide((p) => (p === 'front' ? 'back' : 'front'))}
+              >
+                <Ionicons name="refresh-outline" size={screenHeight < 700 ? 14 : 16} color={theme.colors.text} />
               </TouchableOpacity>
             </View>
           </View>
 
-          <View style={styles.modelWrapper}>
+          <View style={[styles.modelWrapper, { height: dynamicSizes.modelHeight }]}>
             <Body
               data={data}
               gender={gender}
               side={side}
-              scale={1.2}
+              scale={dynamicSizes.modelScale}
               border={theme.colors.card}
               colors={["#6B7280", "#9CA3AF"]}
               onBodyPartPress={(bp: any) => {
@@ -238,10 +299,10 @@ export default function ObjectivesQuestionScreen() {
         </View>
       </Animated.View>
 
-      {/* Muscle Grid */}
+      {/* Muscle Grid - Scroll horizontal compacto */}
       <Animated.View
         entering={FadeInDown.delay(600).springify()}
-        style={styles.muscleSection}
+        style={[styles.muscleSection, { maxHeight: dynamicSizes.muscleSectionMaxHeight }]}
       >
         <FlatList
           data={currentMuscles}
@@ -262,22 +323,27 @@ export default function ObjectivesQuestionScreen() {
                     borderColor: isSelected
                       ? theme.colors.accent
                       : theme.colors.borderNeon,
-                    minWidth: 120, 
-                    maxWidth: 140,
+                    minWidth: dynamicSizes.muscleButtonMinWidth,
+                    maxWidth: dynamicSizes.muscleButtonMaxWidth,
+                    paddingVertical: screenHeight < 700 ? 10 : 12,
+                    paddingHorizontal: screenHeight < 700 ? 12 : 14,
                   }
                 ]}
                 onPress={() => toggleMuscle(item)}
               >
                 <Text style={[
                   styles.muscleText,
-                  { color: isSelected ? theme.colors.accent : theme.colors.text }
+                  { 
+                    color: isSelected ? theme.colors.accent : theme.colors.text,
+                    fontSize: screenHeight < 700 ? 12 : 13,
+                  }
                 ]}>
                   {MUSCLE_LABELS[item] || item}
                 </Text>
                 {isSelected && (
                   <Ionicons
                     name="checkmark-circle"
-                    size={20}
+                    size={screenHeight < 700 ? 16 : 18}
                     color={theme.colors.accent}
                     style={styles.checkIcon}
                   />
@@ -288,8 +354,7 @@ export default function ObjectivesQuestionScreen() {
         />
       </Animated.View>
 
-
-      {/* Next Button - ABAJO */}
+      {/* Next Button - Siempre visible */}
       <Animated.View
         entering={FadeInUp.delay(800).springify()}
         style={styles.buttonSection}
@@ -301,11 +366,17 @@ export default function ObjectivesQuestionScreen() {
         >
           <LinearGradient
             colors={[theme.colors.accent, theme.colors.accent + 'CC']}
-            style={styles.buttonGradient}
+            style={[styles.buttonGradient, { paddingVertical: screenHeight < 700 ? 14 : 16 }]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
           >
-            <Text style={[styles.nextTxt, { color: theme.colors.background }]}>
+            <Text style={[
+              styles.nextTxt, 
+              { 
+                color: theme.colors.background,
+                fontSize: screenHeight < 700 ? 14 : 15,
+              }
+            ]}>
               {loading ? 'Guardando...' : 'Siguiente'}
             </Text>
           </LinearGradient>
@@ -318,147 +389,128 @@ export default function ObjectivesQuestionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   headerSection: {
     alignItems: 'center',
-    marginTop: height * 0.05,
-    marginBottom: 20,
+    marginBottom: 16,
   },
   headerRow: {
     alignSelf: 'flex-start',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   title: {
-    fontSize: 28,
     fontWeight: '700',
     letterSpacing: -0.5,
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
     fontWeight: '400',
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
   },
   categorySection: {
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  categoryContainer: {
+    paddingHorizontal: 8,
+    gap: 8,
+  },
+  categoryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+  },
+  categoryText: {
+    fontWeight: '600',
   },
   modelSection: {
-    marginBottom: 12,
+    marginBottom: 60,
   },
   modelCard: {
     borderWidth: 1,
     borderRadius: 16,
-    padding: 12,
+    padding: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   modelHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 50,
     paddingHorizontal: 4,
   },
   modelActions: {
     flexDirection: 'row',
-    gap: 8,
+    paddingBottom: 0,
+    gap: 6,
   },
   iconBtn: {
-    width: 32,
-    height: 32,
     borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   modelWrapper: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   sectionTitle: {
-    fontSize: 18,
     fontWeight: '700',
-    marginBottom: 16,
-    paddingHorizontal: 8,
   },
-  categoryContainer: {
-    paddingHorizontal: 8,
-    gap: 12,
-  },
-  categoryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 8,
-  },
-  categoryText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
+
   muscleSection: {
-    flex: 1,
-    marginBottom: 20,
+    marginTop: 16,  
+    marginBottom: 16,
   },
-  muscleGrid: {
+  muscleRow: {
     paddingHorizontal: 8,
-    gap: 12,
+    gap: 8,
   },
   muscleButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    margin: 6,
-    alignSelf: 'flex-start',
+    marginHorizontal: 4,
   },
   muscleText: {
-    fontSize: 14,
     fontWeight: '600',
     flex: 1,
+    textAlign: 'center',
   },
   checkIcon: {
-    marginLeft: 8,
+    marginLeft: 6,
   },
   buttonSection: {
-    paddingBottom: 40,
+    paddingBottom: 20,
     alignItems: 'center',
   },
   nextBtn: {
     borderRadius: 16,
     overflow: 'hidden',
     width: '100%',
-    maxWidth: 300,
+    maxWidth: 280,
   },
   buttonGradient: {
-    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
   nextTxt: {
     fontWeight: '700',
-    fontSize: 16,
-    letterSpacing: 1,
-  },
-
-  muscleRow: {
-    paddingHorizontal: 1,
-    marginBottom: 12,
-    gap: 10,
+    letterSpacing: 0.5,
   },
 });

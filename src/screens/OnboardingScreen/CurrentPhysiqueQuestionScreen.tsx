@@ -52,8 +52,7 @@ export default function CurrentPhysiqueQuestionScreen() {
       const userId = sess.session?.user?.id;
       if (!userId) throw new Error('Sin sesión');
       await supabase.from('initial_survey').upsert({ user_id: userId, current_physique: value });
-      Alert.alert('Listo', 'Tu físico actual ha sido guardado.');
-      navigation.goBack();
+      navigation.navigate('WeightHeightQuestion');
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'No se pudo guardar');
     } finally {
