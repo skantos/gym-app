@@ -10,6 +10,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: config.icon ?? './assets/icon.png',
   userInterfaceStyle: config.userInterfaceStyle ?? 'light',
   newArchEnabled: (config as any).newArchEnabled ?? false,
+  runtimeVersion: { policy: 'appVersion' },
+  updates: {
+    url: 'https://u.expo.dev/a19f1f0d-70f4-4fe3-b73d-cabd90969168',
+    fallbackToCacheTimeout: 0,
+  },
   splash: config.splash ?? {
     image: './assets/splash-icon.png',
     resizeMode: 'contain',
