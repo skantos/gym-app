@@ -7,6 +7,8 @@ import GenderQuestionScreen from '../screens/OnboardingScreen/GenderQuestionScre
 import ObjectivesQuestionScreen from '../screens/OnboardingScreen/ObjectivesQuestionScreen';
 import CurrentPhysiqueQuestionScreen from '../screens/OnboardingScreen/CurrentPhysiqueQuestionScreen';
 import WeightHeightQuestionScreen from '../screens/OnboardingScreen/WeightHeightQuestionScreen';
+import DesiredPhysiqueQuestionScreen from '../screens/OnboardingScreen/DesiredPhysiqueQuestionScreen';
+import DaysPerWeekQuestionScreen from '../screens/OnboardingScreen/DaysPerWeekQuestionScreen';
 import { useUser } from '../context/UserContext';
 
 const Stack = createStackNavigator();
@@ -30,6 +32,8 @@ export default function AppNavigator() {
           <Stack.Screen name="ObjectivesQuestion" component={ObjectivesQuestionScreen} options={{ gestureEnabled: false }} />
           <Stack.Screen name="CurrentPhysiqueQuestion" component={CurrentPhysiqueQuestionScreen} options={{ gestureEnabled: false }} />
           <Stack.Screen name="WeightHeightQuestion" component={WeightHeightQuestionScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="DesiredPhysiqueQuestion" component={DesiredPhysiqueQuestionScreen} options={{ gestureEnabled: false }} />
+          <Stack.Screen name="DaysPerWeekQuestion" component={DaysPerWeekQuestionScreen} options={{ gestureEnabled: false }} />
         </>
       )}
     </Stack.Navigator>

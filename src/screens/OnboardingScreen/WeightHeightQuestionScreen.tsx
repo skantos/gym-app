@@ -80,6 +80,25 @@ export default function WeightHeightQuestionScreen() {
     }
   };
 
+  const onNext = async () => {
+    try {
+      if (weight <= 0) throw new Error('Peso inválido');
+      if (heightCm <= 0) throw new Error('Altura inválida');
+      setLoading(true);
+      const { data: sess } = await supabase.auth.getSession();
+      const userId = sess.session?.user?.id;
+      if (!userId) throw new Error('Sin sesión');
+      await supabase
+        .from('initial_survey')
+        .upsert({ user_id: userId, weight_kg: weight, height_cm: heightCm });
+      navigation.navigate('DesiredPhysiqueQuestion');
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'No se pudo guardar');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const renderSelector = (type: 'weight' | 'height', data: any[], value: number) => {
     const unit = type === 'weight' ? 'kg' : 'cm';
     const label = type === 'weight' ? 'Peso' : 'Altura';
@@ -212,6 +231,7 @@ export default function WeightHeightQuestionScreen() {
           style={[styles.nextBtn, { 
             opacity: loading ? 0.6 : 1,
           }]} 
+          onPress={onNext}
           disabled={loading}
         >
           <LinearGradient
