@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, FlatList, Image, Alert, ScrollView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, FlatList, Image, Alert, ScrollView, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../context/ThemeContext';
 import { supabase } from '../../services/supabase';
-import { fetchEquipmentCatalog, getEquipmentProfile, upsertEquipmentProfile } from '../../services/equipment';
+import { fetchEquipmentCatalog, getEquipmentProfileItems, replaceEquipmentProfileItems } from '../../services/equipment';
 
 const { height, width } = Dimensions.get('window');
 
-type CatalogItem = { id: number; slug: string; name: string; image_url?: string; group?: string };
+// ACTUALIZADO: Cambiar slug por item_slug
+type CatalogItem = { id: number; item_slug: string; name: string; image_url?: string; group?: string };
 
 export default function EquipmentPickerScreen() {
   const theme = useTheme();
@@ -18,21 +18,28 @@ export default function EquipmentPickerScreen() {
   const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [groupedItems, setGroupedItems] = useState<Record<string, CatalogItem[]>>({});
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    (async () => {
+  const loadData = async () => {
+    try {
+      setRefreshing(true);
       const { data: sess } = await supabase.auth.getSession();
       const userId = sess.session?.user?.id;
       if (!userId) return;
+
+      // Fetch catalog
+      const { data: cat, error: catError } = await fetchEquipmentCatalog();
+      if (catError) {
+        console.error('Catalog error:', catError);
+        Alert.alert('Error', 'No se pudo cargar el catálogo');
+        return;
+      }
       
-      const { data: cat } = await fetchEquipmentCatalog();
       if (cat) {
         const sortedItems = (cat as CatalogItem[]).sort((a, b) => {
-          // Ordenar por grupo primero
           if (a.group && b.group && a.group !== b.group) {
             return a.group.localeCompare(b.group);
           }
-          // Luego por nombre dentro del mismo grupo
           return a.name.localeCompare(b.name);
         });
         
@@ -51,13 +58,29 @@ export default function EquipmentPickerScreen() {
         setGroupedItems(grouped);
       }
       
-      const { data: prof } = await getEquipmentProfile(userId);
-      if (prof?.items) setSelected(prof.items as string[]);
-    })();
+      // Fetch user's selected items
+      try {
+        const profItems = await getEquipmentProfileItems(userId);
+        setSelected(profItems.map((r: any) => r.item_slug));
+      } catch (error) {
+        console.error('Profile items error:', error);
+        Alert.alert('Error', 'No se pudieron cargar los items seleccionados');
+      }
+    } catch (error) {
+      console.error('Load data error:', error);
+      Alert.alert('Error', 'Error al cargar los datos');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
-  const toggle = (slug: string) => {
-    setSelected((prev) => (prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]));
+  // ACTUALIZADO: Cambiar parámetro de slug a item_slug
+  const toggle = (item_slug: string) => {
+    setSelected((prev) => (prev.includes(item_slug) ? prev.filter((s) => s !== item_slug) : [...prev, item_slug]));
   };
 
   const onSave = async () => {
@@ -66,19 +89,30 @@ export default function EquipmentPickerScreen() {
       const { data: sess } = await supabase.auth.getSession();
       const userId = sess.session?.user?.id;
       if (!userId) throw new Error('Sin sesión');
-      await upsertEquipmentProfile(userId, selected);
-      Alert.alert('Guardado', 'Equipamiento actualizado.');
+      
+      const result = await replaceEquipmentProfileItems(userId, selected);
+      
+      if (result && 'error' in result) {
+        throw result.error;
+      }
+      
+      Alert.alert('Guardado', 'Equipamiento actualizado correctamente.');
       navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Error', e?.message ?? 'No se pudo guardar');
-    } finally { setLoading(false); }
+      console.error('Save error:', e);
+      Alert.alert('Error', e?.message ?? 'No se pudo guardar el equipamiento');
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const renderItem = ({ item }: { item: CatalogItem }) => {
-    const isSel = selected.includes(item.slug);
+    // ACTUALIZADO: Cambiar item.slug por item.item_slug
+    const isSel = selected.includes(item.item_slug);
     return (
       <TouchableOpacity 
-        onPress={() => toggle(item.slug)} 
+        // ACTUALIZADO: Cambiar item.slug por item.item_slug
+        onPress={() => toggle(item.item_slug)} 
         style={[
           styles.card, 
           { 
@@ -89,9 +123,16 @@ export default function EquipmentPickerScreen() {
       > 
         <View style={styles.cardImageWrap}>
           {item.image_url ? (
-            <Image source={{ uri: item.image_url }} style={styles.cardImage} resizeMode="contain" />
+            <Image 
+              source={{ uri: item.image_url }} 
+              style={styles.cardImage} 
+              resizeMode="contain" 
+              onError={() => console.log('Image load error:', item.image_url)}
+            />
           ) : (
-            <Ionicons name="image-outline" size={24} color={theme.colors.text + '99'} />
+            <View style={styles.placeholderIcon}>
+              <Ionicons name="fitness-outline" size={24} color={theme.colors.text + '66'} />
+            </View>
           )}
           {isSel && (
             <View style={[styles.checkBadge, { backgroundColor: theme.colors.accent }]}> 
@@ -99,7 +140,10 @@ export default function EquipmentPickerScreen() {
             </View>
           )}
         </View>
-        <Text numberOfLines={2} style={[styles.cardTitle, { color: isSel ? theme.colors.accent : theme.colors.text }]}>
+        <Text 
+          numberOfLines={2} 
+          style={[styles.cardTitle, { color: isSel ? theme.colors.accent : theme.colors.text }]}
+        >
           {item.name}
         </Text>
       </TouchableOpacity>
@@ -112,41 +156,75 @@ export default function EquipmentPickerScreen() {
       'small_gym': 'Gimnasio Pequeño',
       'commercial_gym': 'Gimnasio Comercial',
       'calisthenics': 'Calistenia',
+      'Otros': 'Otros Equipos'
     };
     
     return groupNames[group] || group;
   };
 
+  const renderGroup = ({ group, items }: { group: string; items: CatalogItem[] }) => (
+    <View key={group} style={styles.groupContainer}>
+      <Text style={[styles.groupTitle, { color: theme.colors.accent }]}>
+        {getGroupName(group)}
+      </Text>
+      <FlatList
+        data={items}
+        numColumns={3}
+        // ACTUALIZADO: Mejor key extractor
+        keyExtractor={(it) => `${it.id}-${it.item_slug}`}
+        contentContainerStyle={styles.grid}
+        renderItem={renderItem}
+        scrollEnabled={false}
+      />
+    </View>
+  );
+
   return (
-    <View style={[styles.container, { backgroundColor: '#000' }]}> 
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}> 
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { borderColor: theme.colors.borderNeon }]}> 
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          style={[styles.backButton, { borderColor: theme.colors.borderNeon }]}
+        > 
           <Ionicons name="arrow-back" size={24} color={theme.colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: theme.colors.text }]}>Equipamiento</Text>
-        <TouchableOpacity onPress={onSave} disabled={loading}>
-          <Text style={[styles.saveLink, { color: '#60A5FA', opacity: loading ? 0.6 : 1 }]}>
-            {loading ? '...' : 'Guardar'}
+        <TouchableOpacity onPress={onSave} disabled={loading || refreshing}>
+          <Text style={[
+            styles.saveLink, 
+            { 
+              color: theme.colors.accent, 
+              opacity: (loading || refreshing) ? 0.6 : 1 
+            }
+          ]}>
+            {loading ? 'Guardando...' : 'Guardar'}
           </Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {Object.entries(groupedItems).map(([group, items]) => (
-          <View key={group} style={styles.groupContainer}>
-            <Text style={[styles.groupTitle, { color: theme.colors.accent }]}>
-              {getGroupName(group)}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={loadData}
+            colors={[theme.colors.accent]}
+            tintColor={theme.colors.accent}
+          />
+        }
+      >
+        {Object.entries(groupedItems).length > 0 ? (
+          Object.entries(groupedItems).map(([group, items]) => 
+            renderGroup({ group, items })
+          )
+        ) : (
+          <View style={styles.emptyState}>
+            <Ionicons name="fitness-outline" size={48} color={theme.colors.text + '66'} />
+            <Text style={[styles.emptyText, { color: theme.colors.text + '99' }]}>
+              {refreshing ? 'Cargando...' : 'No hay equipamiento disponible'}
             </Text>
-            <FlatList
-              data={items}
-              numColumns={3}
-              keyExtractor={(it) => String(it.id)}
-              contentContainerStyle={styles.grid}
-              renderItem={renderItem}
-              scrollEnabled={false}
-            />
           </View>
-        ))}
+        )}
       </ScrollView>
     </View>
   );
@@ -161,6 +239,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingBottom: 20,
+    minHeight: height - 100,
   },
   headerRow: { 
     flexDirection: 'row', 
@@ -168,6 +247,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', 
     paddingVertical: 12,
     marginBottom: 10,
+    marginTop: 20,
   },
   backButton: { 
     width: 38, 
@@ -210,11 +290,21 @@ const styles = StyleSheet.create({
     width: '100%', 
     height: CARD - 40, 
     alignItems: 'center', 
-    justifyContent: 'center' 
+    justifyContent: 'center',
+    position: 'relative',
   },
   cardImage: { 
     width: '100%', 
-    height: '100%' 
+    height: '100%',
+    borderRadius: 8,
+  },
+  placeholderIcon: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 8,
   },
   checkBadge: { 
     position: 'absolute', 
@@ -231,5 +321,16 @@ const styles = StyleSheet.create({
     fontSize: 12, 
     fontWeight: '700', 
     textAlign: 'center' 
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
